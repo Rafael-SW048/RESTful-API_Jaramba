@@ -1,0 +1,26 @@
+{
+  "name": "jaramba-api",
+  "version": "1.0.0",
+  "description": "A Node.js RESTful API for Location Data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rafael-SW048/RESTful-API_Jaramba.git"
+  },
+  "keywords": [
+    "node",
+    "restful",
+    "api",
+    "jaramba",
+    "location"
+  ],
+  "author": "Rafael Sinjunatha Wulangsih",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rafael-SW048/RESTful-API_Jaramba/issues"
+  },
+  "homepage": "https://github.com/Rafael-SW048/RESTful-API_Jaramba#readme"
+}
