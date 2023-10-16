@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const fleetLocationSchema = new mongoose.Schema({
+const fleetLocationSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
   fleetId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -11,9 +11,10 @@ const fleetLocationSchema = new mongoose.Schema({
     ref: 'User', // Reference to the 'User' model for drivers (if applicable)
   },
   location: {
-    lat: Number,
-    lon: Number,
+    lat: String,
+    lon: String,
   },
+  expireAt: { type: Date, default: Date.now, index: { expires: '60s' } }, // Expires in 60 seconds
   timestamp: String,
 });
 

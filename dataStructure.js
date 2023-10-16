@@ -27,8 +27,8 @@
   fleetId: ObjectId, // Reference to the associated fleet
   driverId: ObjectId, // Reference to the associated driver (if applicable)
   location: {
-    lat: Number, // Latitude coordinate
-    lon: Number, // Longitude coordinate
+    lat: String, // Latitude coordinate
+    lon: String, // Longitude coordinate
   },
   timestamp: String, // Timestamp indicating the time of the location update
 }

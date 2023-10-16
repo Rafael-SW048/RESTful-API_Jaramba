@@ -7,8 +7,9 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const fleetRoutes = require('./api/routes/fleets');
+const fleetLocationRoutes = require('./api/routes/fleetLocation');
 
-// MongoDB URI loaded from environment variable
+// MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;
 
 // Connect to MongoDB using the URI from the environment variable
@@ -44,7 +45,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/fleets', fleetRoutes);
+app.use('/fleets', fleetRoutes); // Define the base path for fleet routes
+app.use('/fleetLocation', fleetLocationRoutes); // Define the base path for fleetLocation routes
 
 // Error handling
 app.use((req, res, next) => {
