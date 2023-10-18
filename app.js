@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const helmet = require('helmet');
 const fleetRoutes = require('./api/routes/fleets');
 const fleetLocationRoutes = require('./api/routes/fleetLocation');
+const userRoutes = require('./api/routes/users')
 
 // MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;
@@ -46,6 +47,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/fleets', fleetRoutes); // Define the base path for fleet routes
+app.use('/users', userRoutes); 
 app.use('/fleetLocation', fleetLocationRoutes); // Define the base path for fleetLocation routes
 
 // Error handling

@@ -11,6 +11,9 @@ router.post('/', async (req, res) => {
 
     // Extract relevant data from the request
     const { username, password, nama, umur, roles, boundedFleets, active } = req.body;
+    if (boundedFleets===null) {
+      
+    }
 
     // Check if the username already exists in the database
     const existingUser = await User.findOne({ username }).exec();
@@ -27,7 +30,7 @@ router.post('/', async (req, res) => {
       umur,
       roles,
       boundedFleets,
-      active,
+      active: false,
     });
 
     // Save the user data
