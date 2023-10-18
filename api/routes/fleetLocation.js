@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
       expireAt,
       timestamp: new Date().toISOString(),
     });
-
+    
     const result = await newFleetLocation.save();
     console.log(result);
     res.status(201).json({
@@ -77,7 +77,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       message: "Internal server error",
       error: err,
-    });v
+    });
   }
 });
 

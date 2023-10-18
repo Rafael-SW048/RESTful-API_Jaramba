@@ -5,7 +5,7 @@ const helmet = require('helmet');
 // Apply security headers using the helmet middleware
 app.use(helmet());
 
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 const server = http.createServer(app);
 

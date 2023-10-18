@@ -56,7 +56,15 @@ router.post('/', async (req, res) => {
       active: false,
       driverId: null,
     });
+    console.log(licencePlate)
+    // Check if a fleet with the same licencePlate already exists
+    const existingFleet = await Fleet.findOne({ licencePlate });
 
+    if (existingFleet) {
+      return res.status(400).json({
+        message: 'Fleet with this licencePlate already exists',
+      });
+    }
     const result = await newFleet.save();
     console.log(result);
     res.status(201).json({
@@ -64,18 +72,11 @@ router.post('/', async (req, res) => {
       createdFleet: result,
     });
   } catch (err) {
-    if (err.code === 11000) {
-      res.status(400).json({
-        message: 'Fleet with this licencePlate already exists',
-	      error: err,
-      });
-    } else {
-      console.error(err);
-      res.status(500).json({
-        message: "Internal server error",
-	      error: err,
-      });
-    }
+    console.error(err);
+    res.status(500).json({
+      message: "Internal server error", 
+      error: err,
+    });
   }
 });
 

@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  MongoDB-Server:
+    image: mongo:latest
+    container_name: MongoDB-Server
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: db-username
+      MONGO_INITDB_ROOT_PASSWORD: db-password
+    ports:
+      - "27017:27017"
+    networks:
+      - dataBase-network
+    volumes:
+      - type: volume
+        source: MONGO_DATA
+        target: /data/db
+      - type: volume
+        source: MONGO_CONFIG
+        target: /data/configdb
+
+  MongoDB-Dashboard:
+    image: mongo-express:latest
+    container_name: MongoDB-Dashboard
+    environment:
+      ME_CONFIG_MONGODB_SERVER: MongoDB-Server
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ADMINUSERNAME: db-username
+      ME_CONFIG_MONGODB_ADMINPASSWORD: db-password
+      ME_CONFIG_BASICAUTH_USERNAME: int-username
+      ME_CONFIG_BASICAUTH_PASSWORD: int-password
+    networks:
+      - dataBase-network
+    ports:
+      - "8081:8081"
+    volumes:
+     - type: bind
+       source: ./wait-for.sh
+       target: /wait-for.sh
+    depends_on:
+      - MongoDB-Server
+
+  API-Jaramba:
+    image: api-jaramba
+    container_name: API-Jaramba
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_DB_URL: mongodb://db-username:db-password@MongoDB-Server:27017/your-database-name
+    networks:
+      - dataBase-network
+
+networks:
+  dataBase-network:
+    driver: bridge
+
+volumes:
+  MONGO_DATA:
+    name: MONGO_DATA
+  MONGO_CONFIG:
+    name: MONGO_CONFIG
