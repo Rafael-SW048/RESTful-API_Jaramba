@@ -10,10 +10,7 @@ router.post('/', async (req, res) => {
     console.log('Request Body:', req.body);
 
     // Extract relevant data from the request
-    const { username, password, nama, umur, roles, boundedFleets, active } = req.body;
-    if (boundedFleets===null) {
-      
-    }
+    const { username, password, nama, umur, roles, boundedFleets} = req.body;
 
     // Check if the username already exists in the database
     const existingUser = await User.findOne({ username }).exec();
@@ -81,7 +78,7 @@ router.get('/search', async (req, res) => {
       query.roles = roles;
     }
     if (active !== undefined) {
-      query.active = active === 'true';
+      query.active = active;
     }
 
     const user = await User.findOne(query).exec();

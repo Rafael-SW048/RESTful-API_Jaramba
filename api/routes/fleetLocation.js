@@ -41,6 +41,7 @@ cron.schedule('*/1 * * * *', async () => {
   try {
     const now = new Date();
     const result = await FleetLocation.deleteMany({ expireAt: { $lt: now } }).exec();
+    console.log(result)
     console.log(`Deleted ${result.deletedCount} expired fleet locations.`);
   } catch (err) {
     console.error(err);
@@ -94,16 +95,18 @@ router.get('/search', async (req, res) => {
       const fleet = await Fleet.findOne({ licencePlate: req.query.licensePlate }).exec();
       if (!fleet) {
         return res.status(404).json({ message: 'Fleet not found' });
+      } else {
+        query.fleetId = fleet._id;
       }
-      query.fleetId = fleet._id;
     }
 
     if (req.query.driverName) {
       const user = await User.findOne({ nama: req.query.driverName }).exec();
       if (!user || !user._id) {
         return res.status(404).json({ message: 'Driver not found' });
+      } else {
+        query.driverId = user._id;
       }
-      query.driverId = user._id;
     }
 
     if (req.query.lat && req.query.lon && req.query.radius) {
@@ -142,7 +145,7 @@ router.get('/search', async (req, res) => {
 });
 
 // Update a specific fleet location by ID
-router.put('/:fleetLocationId', async (req, res) => {
+router.patch('/:fleetLocationId', async (req, res) => {
   const fleetLocationId = req.params.fleetLocationId;
   const updateOps = req.body;
 

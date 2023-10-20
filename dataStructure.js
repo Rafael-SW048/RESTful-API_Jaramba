@@ -7,8 +7,8 @@
     finish: String, // Finishing point of the route
   },
   routeNumber: Number, // Route number
-  active: Boolean, // Status indicating whether the fleet is active (true) or inactive (false)
-  driverId: ObjectId, // Reference to the driver currently driving the fleet (if applicable)
+  active: Boolean, // Status indicating whether the fleet is active (true) or inactive (false - default)
+  driverId: ObjectId, // Reference to the driver currently driving the fleet
 }
 
 {
@@ -19,16 +19,18 @@
   umur: Number, // Age of the user
   roles: [String], // Array of roles (e.g., "driver", "admin", "user")
   boundedFleets: [ObjectId], // Array of fleet IDs associated with the user (if applicable)
-  active: Boolean,  // Status indicating whether the driver is active (true) or inactive (false)
+  active: Boolean,  // Status indicating whether the driver is active (true) or inactive (false - default)
 }
 
 {
   _id: ObjectId, // Unique identifier
   fleetId: ObjectId, // Reference to the associated fleet
-  driverId: ObjectId, // Reference to the associated driver (if applicable)
+  driverId: ObjectId, // Reference to the associated driver
   location: {
     lat: String, // Latitude coordinate
     lon: String, // Longitude coordinate
   },
   timestamp: String, // Timestamp indicating the time of the location update
 }
+
+
