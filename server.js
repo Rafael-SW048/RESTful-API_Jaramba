@@ -1,11 +1,11 @@
 const http = require('http');
-const app = require('./app');
+const app = require('./src/app');
 const helmet = require('helmet');
 
 // Apply security headers using the helmet middleware
 app.use(helmet());
 
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const server = http.createServer(app);
 
@@ -31,3 +31,4 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
   process.exit(1);
 });
+

@@ -1,13 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const User = require('../models/users');
+const User = require('../../models/users');
 
 // Create a new user record
 router.post('/', async (req, res) => {
   try {
     console.log('Received a POST request to /users');
     console.log('Request Body:', req.body);
+
+    const expectedFields = ['username', 'password', 'name', 'umur', 'roles'];
+
+    if (!expectedFields.every((field) => field in req.body)) {
+      return res.status(400).json({ error: 'Invalid fleet location data format' });
+    };
 
     // Extract relevant data from the request
     const { username, password, nama, umur, roles, boundedFleets} = req.body;

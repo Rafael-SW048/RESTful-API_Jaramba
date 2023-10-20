@@ -1,18 +1,44 @@
 const mongoose = require('mongoose');
 
-const fleetSchema = mongoose.Schema({
-  _id: mongoose.Schema.Types.ObjectId,
-  licencePlate: String,
-  type: String,
-  route: {
-    start: String,
-    finish: String,
+const fleetSchema = new mongoose.Schema({
+  licencePlate: {
+    type: String,
+    required: true,
   },
-  routeNumber: Number,
-  active: Boolean,
+  type: {
+    type: String,
+    required: true,
+  },
+  route: {
+    start: {
+      type: String,
+      required: true,
+    },
+    finish: {
+      type: String,
+      required: true,
+    },
+  },
+  routeNumber: {
+    type: String,
+    required: true,
+  },
+  active: {
+    type: Boolean,
+    default: false,
+  },
   driverId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Reference to the 'User' model for drivers
+    ref: 'User',
+    default: null,
+    validate: {
+      validator: async function(v) {
+        const fleet = this.parent();
+        const driver = await mongoose.model('User').findOne({ _id: v, role: 'driver', active: true });
+        return !!driver && fleet.active;
+      },
+      message: 'Driver ID must reference a user role "driver", an active driver, and the fleet must be active',
+    },
   },
 });
 

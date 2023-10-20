@@ -6,9 +6,9 @@ const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
-const fleetRoutes = require('./api/routes/fleets');
-const fleetLocationRoutes = require('./api/routes/fleetLocation');
-const userRoutes = require('./api/routes/users')
+
+// Import routes
+const v1Routes = require('../api/routes/v1/');
 
 // MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;
@@ -45,16 +45,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
-app.use('/fleets', fleetRoutes); // Define the base path for fleet routes
-app.use('/users', userRoutes); 
-app.use('/fleetLocation', fleetLocationRoutes); // Define the base path for fleetLocation routes
+// Routes versioning
+app.use('/v1', v1Routes); // Define the base path for all v1 routes
 
-// Error handling
-app.use((req, res, next) => {
-  const err = new Error('Not Found');
-  err.status = 404;
-  next(err);
+// Error route not found
+app.use((req, res) => {
+  res.status(404).json({
+    error: {
+      message: 'Not found. Invalid route.',
+    },
+  });
 });
 
 app.use((err, req, res, next) => {

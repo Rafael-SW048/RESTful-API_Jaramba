@@ -2,51 +2,73 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-const Fleet = require('../models/fleets');
+const Fleet = require('../../models/fleets');
 
-// Handling GET Requests to all fleets
+// Handling GET Requests to all fleets with pagination
 router.get('/', async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 5, 10); // Default to 5, with a maximum limit of 10
-    const fleets = await Fleet.find().limit(limit).exec();
+    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
 
-    if (fleets.length > 0) {
-      const transformedFleets = fleets.map((fleet) => ({
-        _id: fleet._id,
-        licencePlate: fleet.licencePlate,
-        type: fleet.type,
-        route: fleet.route,
-        routeNumber: fleet.routeNumber,
-        active: fleet.active,
-        driverId: fleet.driverId,
-      }));
+    const totalFleets = await Fleet.countDocuments();
+    const fleets = totalFleets <= skip ? await Fleet.find() : await Fleet.find().skip(skip).limit(limit);
 
-      res.status(200).json({
-        message: 'Fleets retrieved successfully',
-        fleets: transformedFleets,
+    if (fleets.length === 0) {
+      return res.status(404).json({
+        message: 'No fleets found',
       });
-    } else {
-      res.status(404).json({ message: 'No fleets found' });
     }
+
+    const transformedFleets = fleets.map((fleet) => ({
+      id: fleet._id,
+      licencePlate: fleet.licencePlate,
+      type: fleet.type,
+      route: fleet.route,
+      routeNumber: fleet.routeNumber,
+      active: fleet.active,
+      driverId: fleet.driverId,
+    }));
+
+    res.status(200).json({
+      message: 'Fleets retrieved successfully',
+      fleets: transformedFleets,
+      totalPages: Math.ceil(totalFleets / limit),
+      currentPage: page,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      message: "Internal server error",
-      error: err,
+      message: 'Internal server error',
     });
   }
 });
 
-// Handling POST Requests to /fleets
+// Handling POST Requests to /fleets with type checking
 router.post('/', async (req, res) => {
   try {
     const expectedFields = ['licencePlate', 'type', 'route', 'routeNumber'];
 
     if (!expectedFields.every((field) => field in req.body)) {
-      return res.status(400).json({ error: 'Invalid fleet data format' });
+      return res.status(400).json({
+        error: 'Invalid fleet data format',
+      });
     }
 
     const { licencePlate, type, route, routeNumber } = req.body;
+
+    // Validate data types of fields
+    if (typeof licencePlate !== 'string' ||
+        typeof type !== 'string' ||
+        typeof route !== 'object' ||
+        typeof route.start !== 'string' ||
+        typeof route.finish !== 'string' ||
+        typeof routeNumber !== 'number') {
+      return res.status(400).json({
+        error: 'Invalid data type for one or more fields',
+      });
+    }
+
     const newFleet = new Fleet({
       _id: new mongoose.Types.ObjectId(),
       licencePlate,
@@ -56,7 +78,7 @@ router.post('/', async (req, res) => {
       active: false,
       driverId: null,
     });
-    console.log(licencePlate)
+
     // Check if a fleet with the same licencePlate already exists
     const existingFleet = await Fleet.findOne({ licencePlate });
 
@@ -74,7 +96,7 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      message: "Internal server error", 
+      message: 'Internal server error',
       error: err,
     });
   }
@@ -111,8 +133,8 @@ router.get('/search', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      message: "Internal server error",
-	    error: err,
+      message: 'Internal server error',
+      error: err,
     });
   }
 });
@@ -144,8 +166,8 @@ router.patch('/:fleetId', async (req, res) => {
   } catch (err) {
     console.log('Error during update:', err);
     res.status(500).json({
-      message: "Internal server error",
-	    error: err,
+      message: 'Internal server error',
+      error: err,
     });
   }
 });
@@ -165,8 +187,8 @@ router.delete('/:fleetId', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      message: "Internal server error",
-	    error: err,
+      message: 'Internal server error',
+      error: err,
     });
   }
 });

@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const FleetLocation = require('../models/fleetLocation');
-const Fleet = require('../models/fleets');
+const FleetLocation = require('../../models/fleetLocations');
+const Fleet = require('../../models/fleets');
 const cron = require('node-cron');
 
 // Create a new fleetLocation record
@@ -10,6 +10,12 @@ router.post('/', async (req, res) => {
   console.log('Received a POST request to /fleetlocations');
   console.log('Request Body:', req.body);
   try {
+    const expectedFields = ['fleetId', 'driverId', 'location'];
+
+    if (!expectedFields.every((field) => field in req.body)) {
+      return res.status(400).json({ error: 'Invalid fleet location data format' });
+    };
+
     const { fleetId, driverId, location } = req.body;
     const expireAt = new Date(new Date().getTime() + 1 * 60000);
     const newFleetLocation = new FleetLocation({

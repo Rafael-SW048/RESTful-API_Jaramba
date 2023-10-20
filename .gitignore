@@ -26,8 +26,13 @@ node_modules
 *.log
 *.sql
 *.sqlite
+
+
+# Docker #
+######################
 Dockerfile
 *.yml
+.dockerignore
 
 
 # OS generated files #
