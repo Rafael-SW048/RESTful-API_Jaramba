@@ -1,63 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const { body, validationResult } = require('express-validator');
+
 const User = require('../../models/users');
+const userSchema = User.schema;
+const DeletedUser = mongoose.model('DeletedUser', userSchema);
 
-// Create a new user record
-router.post('/', async (req, res) => {
+const authenticateTokenAndAuthorization = require('./authMiddleware');
+const checkUserIdMiddleware = require('./checkUserIdMiddleware');
+
+function formatUserData(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email,
+    name: user.name,
+    age: user.age,
+    roles: user.roles,
+    active: user.active,
+    boundedFleets: user.boundedFleets
+  };
+}
+
+// Get all users with pagination
+router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   try {
-    console.log('Received a POST request to /users');
-    console.log('Request Body:', req.body);
+    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
 
-    const expectedFields = ['username', 'password', 'name', 'umur', 'roles'];
+    let query = { roles: { $ne: 'admin' } }; // Exclude users with 'admin' role
 
-    if (!expectedFields.every((field) => field in req.body)) {
-      return res.status(400).json({ error: 'Invalid fleet location data format' });
-    };
-
-    // Extract relevant data from the request
-    const { username, password, nama, umur, roles, boundedFleets} = req.body;
-
-    // Check if the username already exists in the database
-    const existingUser = await User.findOne({ username }).exec();
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
+    // If the requester's role is 'hcm', only return users with 'driver' role
+    if (req.user.roles.includes('hcm')) {
+      query = { roles: 'driver' };
     }
 
-    // Create a new user object
-    const newUser = new User({
-      _id: new mongoose.Types.ObjectId(),
-      username,
-      password,
-      nama,
-      umur,
-      roles,
-      boundedFleets,
-      active: false,
-    });
+    const totalUsers = await User.countDocuments(query);
+    const users = totalUsers <= skip ? await User.find(query) : await User.find(query).skip(skip).limit(limit);
 
-    // Save the user data
-    const result = await newUser.save();
-    console.log(result);
-    res.status(201).json({
-      message: 'User created successfully',
-      createdUser: result,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    const formattedUsers = users.map(user => formatUserData(user));
 
-// Get all users
-router.get('/', async (req, res) => {
-  try {
-    const users = await User.find().exec();
-
-    if (users.length === 0) {
+    if (formattedUsers.length === 0) {
       res.status(404).json({ message: 'No users found in the database.' });
     } else {
-      res.status(200).json(users);
+      res.status(200).json({ 
+        message: 'Users retrieved successfully', 
+        totalPages: Math.ceil(totalUsers / limit),
+        currentPage: page, 
+        users: formattedUsers
+      });
     }
   } catch (err) {
     console.error(err);
@@ -65,20 +59,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get a specific user by _id, nama, umur, roles, or active
-router.get('/search', async (req, res) => {
+// Get a specific user by _id, name, age, roles, or active
+router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   try {
-    const { _id, nama, umur, roles, active } = req.query;
-    const query = {};
+    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+
+    const { _id, name, age, roles, active } = req.query;
+    let query = {};
 
     if (_id) {
       query._id = _id;
     }
-    if (nama) {
-      query.nama = nama;
+    if (name) {
+      query.name = name;
     }
-    if (umur) {
-      query.umur = umur;
+    if (age) {
+      query.age = age;
     }
     if (roles) {
       query.roles = roles;
@@ -87,51 +85,119 @@ router.get('/search', async (req, res) => {
       query.active = active;
     }
 
-    const user = await User.findOne(query).exec();
+    // Exclude users with 'admin' role
+    query.roles = { $ne: 'admin' };
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    // If the requester's role is 'hcm', only return users with 'driver' role
+    if (req.user.roles.includes('hcm')) {
+      query.roles = 'driver';
     }
 
-    res.status(200).json(user);
+    const totalUsers = await User.countDocuments(query);
+    const users = totalUsers <= skip ? await User.find(query, { password: 0, refreshToken: 0 }) : await User.find(query, { password: 0, refreshToken: 0 }).skip(skip).limit(limit);
+
+    const formattedUsers = users.map(user => formatUserData(user));
+
+    if (formattedUsers.length === 0) {
+      res.status(404).json({ message: 'No users found for the specified criteria.' });
+    } else {
+      res.status(200).json({ 
+        message: 'Users retrieved successfully', 
+        users: formattedUsers,
+        totalPages: Math.ceil(totalUsers / limit),
+        currentPage: page
+      });
+    }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'An error occurred while searching for the user.' });
+    res.status(500).json({ error: err });
   }
 });
 
 // Update a specific user by ID
-router.put('/:userId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const updateOps = req.body;
-    const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true }).exec();
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+router.put('/:userId', 
+  authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), 
+  checkUserIdMiddleware(), 
+  [ 
+    body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters').matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/, "i").withMessage('Password should have at least one uppercase, one lowercase, and one number'),
+    body('email').optional().isEmail().withMessage('Email must be valid'),
+    body('name').optional().isLength({ min: 1 }).withMessage('Name must not be empty'),
+    body('age').optional().isInt({ gt: 0 }).withMessage('Age must be a positive integer'),
+    body('boundedFleets').optional().isArray().withMessage('BoundedFleets must be an array')
+  ], 
+  async (req, res) => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+    try {
+      const userId = req.params.userId;
+      const updateOps = req.body;
 
-    res.status(200).json({ message: 'User updated successfully', updatedUser });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err });
-  }
+      // Restricting the fields that can be updated
+      const allowedFields = ['password', 'email', 'name', 'age', 'boundedFleets'];
+      const restrictedFields = Object.keys(updateOps).filter(field => !allowedFields.includes(field));
+
+      if (restrictedFields.length > 0) {
+        return res.status(403).json({ message: 'You are not allowed to update the following fields:', restrictedFields });
+      }
+
+      let passwordUpdated = false;
+      if (updateOps.password) {
+        // Encrypt the password using bcrypt
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(updateOps.password, saltRounds);
+        updateOps.password = hashedPassword;
+        passwordUpdated = true;
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true }).exec();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Create a new object with only the user ID, username, and updated fields
+      const responseUser = {
+        _id: updatedUser._id,
+        username: updatedUser.username,
+      };
+
+      for (const field of Object.keys(updateOps)) {
+        if (field !== 'password') {
+          responseUser[field] = updatedUser[field];
+        }
+      }
+
+      const response = { message: 'User updated successfully', user: responseUser };
+      if (passwordUpdated) {
+        response.passwordMessage = 'Password updated successfully';
+      }
+
+      res.status(200).json(response);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err });
+    }
 });
 
 // Delete a specific user by ID
-router.delete('/:userId', async (req, res) => {
+router.delete('/', authenticateTokenAndAuthorization(['admin']), checkUserIdMiddleware(), async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const result = await User.findByIdAndRemove(userId).exec();
-
-    if (!result) {
-      return res.status(404).json({ message: 'User not found' });
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    res.status(200).json({ message: 'User deleted successfully' });
+    const deletedUser = new DeletedUser(user.toObject());
+    await deletedUser.save();
+
+    await User.findByIdAndRemove(req.params.id);
+
+    res.json({ message: 'User deleted successfully' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message });
   }
 });
 

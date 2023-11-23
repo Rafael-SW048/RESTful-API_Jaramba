@@ -4,6 +4,10 @@ const router = express.Router();
 const fleets = require('./fleets');
 const fleetLocations = require('./fleetLocations');
 const users = require('./users');
+const registerRoute = require('./register');
+const loginRoute = require('./login');
+const refreshRoute = require('./refresh');
+
 
 // Root route
 router.get('/', (req, res) => {
@@ -14,9 +18,12 @@ router.get('/', (req, res) => {
 });
 
 // Sub-routes
+router.use('/register', registerRoute); // Handles registration
+router.use('/login', loginRoute); // Handles login
+router.use('/refresh', refreshRoute); // Handles token refresh
+router.use('/users', users); // Handles user-related routes
 router.use('/fleets', fleets); // Handles fleet-related routes
 router.use('/fleetLocations', fleetLocations); // Handles fleet location-related routes
-router.use('/users', users); // Handles user-related routes
 
 // Catch-all route for 404 errors
 router.use((req, res) => {

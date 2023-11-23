@@ -3,9 +3,11 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 const Fleet = require('../../models/fleets');
+const authenticateTokenAndAuthorization = require('./authMiddleware');
+const checkUserIdMiddleware = require('./checkUserIdMiddleware');
 
 // Handling GET Requests to all fleets with pagination
-router.get('/', async (req, res) => {
+router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), checkUserIdMiddleware(), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);
     const page = parseInt(req.query.page) || 1;
@@ -45,7 +47,7 @@ router.get('/', async (req, res) => {
 });
 
 // Handling POST Requests to /fleets with type checking
-router.post('/', async (req, res) => {
+router.post('/', authenticateTokenAndAuthorization(['admin', 'hcm']), checkUserIdMiddleware(), async (req, res) => {
   try {
     const expectedFields = ['licencePlate', 'type', 'route', 'routeNumber'];
 
@@ -103,7 +105,7 @@ router.post('/', async (req, res) => {
 });
 
 // Handling GET Requests with query parameters based on the fleet data structure
-router.get('/search', async (req, res) => {
+router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), checkUserIdMiddleware(), async (req, res) => {
   try {
     const query = {};
     const queryParamMapping = {
@@ -140,7 +142,7 @@ router.get('/search', async (req, res) => {
 });
 
 // Handling PATCH (edit) request for a specific fleetId
-router.patch('/:fleetId', async (req, res) => {
+router.put('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), checkUserIdMiddleware(), async (req, res) => {
   const fleetId = req.params.fleetId;
   const updateOps = {};
 
@@ -173,7 +175,7 @@ router.patch('/:fleetId', async (req, res) => {
 });
 
 // Handling DELETE Requests for a specific fleet based on its _id
-router.delete('/:fleetId', async (req, res) => {
+router.delete('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), checkUserIdMiddleware(),async (req, res) => {
   const fleetId = req.params.fleetId;
 
   try {

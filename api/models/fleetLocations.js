@@ -23,10 +23,6 @@ const fleetLocationSchema = mongoose.Schema({
     lat: { type: String, required: true },
     lon: { type: String, required: true },
   },
-  expireTime: {
-    type: Date,
-    default: null,
-  },
   timestamp: { type: String, required: true },
 });
 

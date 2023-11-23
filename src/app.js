@@ -1,6 +1,8 @@
 require('dotenv').config(); // Load environment variables from .env file
 
 const express = require('express');
+// const session = require('express-session');
+const MongoDBStore = require('connect-mongodb-session')//(session);
 const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
@@ -17,6 +19,8 @@ const mongooseURI = process.env.MONGODB_URI;
 mongoose.connect(mongooseURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  retryWrites: true,
+  dbName: 'jarambaDB',
 })
 .then(() => {
   console.log('Connected to MongoDB');
@@ -29,7 +33,33 @@ mongoose.connect(mongooseURI, {
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(helmet()); // Adds security headers
+app.use(helmet()); // Adds security headers to HTTP response
+
+// // Set up the MongoDB session store
+// const store = new MongoDBStore({
+//   uri: mongooseURI,
+//   collection: 'sessions'
+// });
+
+// // Catch errors in the MongoDB session store
+// store.on('error', (error) => {
+//   console.error('MongoDB session store error:', error);
+// });
+
+// // Set up the express-session middleware
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: {
+//       httpOnly: true,
+//       sameSite: 'strict',
+//       maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+//     },
+//     store: store
+//   })
+// );
 
 // CORS handling
 app.use((req, res, next) => {

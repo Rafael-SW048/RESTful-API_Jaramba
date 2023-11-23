@@ -3,7 +3,9 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const FleetLocation = require('../../models/fleetLocations');
 const Fleet = require('../../models/fleets');
-const cron = require('node-cron');
+const authenticateToken = require('./authMiddleware'); // adjust the path as needed
+
+router.use(authenticateToken);
 
 // Create a new fleetLocation record
 router.post('/', async (req, res) => {
@@ -17,13 +19,11 @@ router.post('/', async (req, res) => {
     };
 
     const { fleetId, driverId, location } = req.body;
-    const expireAt = new Date(new Date().getTime() + 1 * 60000);
     const newFleetLocation = new FleetLocation({
       _id: new mongoose.Types.ObjectId(),
       fleetId,
       driverId,
       location,
-      expireAt,
       timestamp: new Date().toISOString(),
     });
     
@@ -39,33 +39,6 @@ router.post('/', async (req, res) => {
       message: "Internal server error",
       error: err,
     });
-  }
-});
-
-// Schedule a job to remove expired fleet locations
-cron.schedule('*/1 * * * *', async () => {
-  try {
-    const now = new Date();
-    const result = await FleetLocation.deleteMany({ expireAt: { $lt: now } }).exec();
-    console.log(result)
-    console.log(`Deleted ${result.deletedCount} expired fleet locations.`);
-  } catch (err) {
-    console.error(err);
-  }
-});
-
-// Schedule a job to check for inactive fleets and remove their location data
-cron.schedule('*/5 * * * *', async () => {
-  try {
-    const now = new Date();
-    const fleets = await Fleet.find({ active: false }).exec();
-
-    for (const fleet of fleets) {
-      const result = await FleetLocation.deleteMany({ fleetId: fleet._id }).exec();
-      console.log(`Deleted ${result.deletedCount} locations for inactive fleet: ${fleet._id}`);
-    }
-  } catch (err) {
-    console.error(err);
   }
 });
 
