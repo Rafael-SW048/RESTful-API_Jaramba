@@ -34,18 +34,24 @@ const specs = swaggerJsdoc(options);
 const mongooseURI = process.env.MONGODB_URI;
 
 // Connect to MongoDB using the URI from the environment variable
-mongoose.connect(mongooseURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  retryWrites: true,
-  dbName: 'jarambaDB',
-})
-.then(() => {
-  console.log('Connected to MongoDB');
-})
-.catch((error) => {
-  console.error('Error connecting to MongoDB:', error);
-});
+const connectWithRetry = () => {
+  mongoose.connect(mongooseURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    retryWrites: true,
+    dbName: 'jarambaDB',
+  })
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB:', error);
+    console.log('Retrying connection in 5 seconds...');
+    setTimeout(connectWithRetry, 5000);
+  });
+};
+
+connectWithRetry();
 
 // Middleware
 app.use(morgan('dev'));
