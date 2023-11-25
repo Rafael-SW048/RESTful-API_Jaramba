@@ -11,13 +11,6 @@ const fleetLocationSchema = mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User', // Reference to the 'User' model for drivers
     required: true,
-    validate: {
-      validator: async function(v) {
-        const user = await mongoose.model('User').findById(v);
-        return user && user.role === 'driver';
-      },
-      message: 'Driver ID must reference a user with role "driver"',
-    },
   },
   location: {
     lat: { type: String, required: true },

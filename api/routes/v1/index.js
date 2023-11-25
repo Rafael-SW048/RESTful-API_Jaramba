@@ -9,7 +9,24 @@ const loginRoute = require('./login');
 const refreshRoute = require('./refresh');
 
 
-// Root route
+/**
+ * @swagger
+ * tags:
+ *   name: Fleet Management API
+ *   description: API for managing fleets, users, and locations
+ */
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     tags: [Fleet Management API]
+ *     summary: Returns a welcome message and the API version
+ *     responses:
+ *       200:
+ *         description: Welcome message and API version
+ */
+
 router.get('/', (req, res) => {
   res.status(200).json({
     message: 'Welcome to the Fleet Management API!',
@@ -44,3 +61,4 @@ router.use((err, req, res, next) => {
 });
 
 module.exports = router;
+

@@ -24,7 +24,69 @@ function formatUserData(user) {
   };
 }
 
-// Get all users with pagination
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get all users with pagination
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: The numbers of items to return
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: The page number
+ *     responses:
+ *       200:
+ *         description: The users were successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the users were retrieved
+ *                   example: 'Users retrieved successfully'
+ *                 totalPages:
+ *                   type: integer
+ *                   description: The total number of pages
+ *                   example: 2
+ *                 currentPage:
+ *                   type: integer
+ *                   description: The current page number
+ *                   example: 1
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       username:
+ *                         type: string
+ *                         description: The user's username
+ *                         example: 'Driver123'
+ *                       email:
+ *                         type: string
+ *                         description: The user's email
+ *                         example: 'driver@example.com'
+ *                       roles:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         description: The user's roles
+ *                         example: ['driver']
+ *       404:
+ *         description: No users found in the database
+ *       500:
+ *         description: There was an error on the server
+ */
 router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);
@@ -59,30 +121,71 @@ router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req,
   }
 });
 
-// Get a specific user by _id, name, age, roles, or active
+/**
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Get a specific user by _id, name, age, roles, or active
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: object
+ *         description: The query parameters
+ *         example: { limit: 5, page: 1, _id: 5f9a2c7b9d9d8b2b1c7d7b9d, name: 'Jordan Doe', age: 25, roles: 'driver', active: true }
+ *     responses:
+ *       200:
+ *         description: The users were successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the users were retrieved
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       username:
+ *                         type: string
+ *                         example: 'Driver123'
+ *                       email:
+ *                         type: string
+ *                         example: 'driver@example.com'
+ *                       roles:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                           example: ['driver']
+ *                 totalPages:
+ *                   type: integer
+ *                   description: The total number of pages
+ *                   example: 2
+ *                 currentPage:
+ *                   type: integer
+ *                   description: The current page number
+ *                   example: 1
+ *       404:
+ *         description: No users found for the specified criteria
+ *       500:
+ *         description: There was an error on the server
+ */
 router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);
     const page = parseInt(req.query.page) || 1;
     const skip = (page - 1) * limit;
 
-    const { _id, name, age, roles, active } = req.query;
     let query = {};
 
-    if (_id) {
-      query._id = _id;
-    }
-    if (name) {
-      query.name = name;
-    }
-    if (age) {
-      query.age = age;
-    }
-    if (roles) {
-      query.roles = roles;
-    }
-    if (active !== undefined) {
-      query.active = active;
+    for (const param in req.query) {
+      if (req.query[param]) {
+        query[param] = req.query[param];
+      }
     }
 
     // Exclude users with 'admin' role
@@ -94,6 +197,7 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm']), async
     }
 
     const totalUsers = await User.countDocuments(query);
+
     const users = totalUsers <= skip ? await User.find(query, { password: 0, refreshToken: 0 }) : await User.find(query, { password: 0, refreshToken: 0 }).skip(skip).limit(limit);
 
     const formattedUsers = users.map(user => formatUserData(user));
@@ -114,8 +218,103 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm']), async
   }
 });
 
-// Update a specific user by ID
-router.put('/:userId', 
+/**
+ * @swagger
+ * /users/{userId}:
+ *   patch:
+ *     summary: Update a specific user by ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         example: 5f9a2c7b9d9d8b2b1c7d7b9d
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 description: The user's new password
+ *                 example: 'Password123'
+ *               email:
+ *                 type: string
+ *                 description: The user's new email
+ *                 example: 'driver@example.com'
+ *               name:
+ *                 type: string
+ *                 description: The user's new name
+ *                 example: 'John Doe'
+ *               age:
+ *                 type: integer
+ *                 description: The user's new age
+ *                 example: 25
+ *               boundedFleets:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: The user's new boundedFleets
+ *                 example: ['fleet1', 'fleet2']
+ *     responses:
+ *       200:
+ *         description: The user was successfully updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the user was updated
+ *                   example: 'User updated successfully'
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       description: The user's _id
+ *                       example: 5f9a2c7b9d9d8b2b1c7d7b9d
+ *                     username:
+ *                       type: string
+ *                       description: The user's username
+ *                       example: 'Driver123'
+ *                     email:
+ *                       type: string
+ *                       description: The user's email
+ *                       example: 'driver@example.com'
+ *                     name:
+ *                       type: string
+ *                       description: The user's name
+ *                       example: 'John Doe'
+ *                     age:
+ *                       type: integer
+ *                       description: The user's age
+ *                       example: 25
+ *                     boundedFleets:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: The user's boundedFleets
+ *                       example: ['fleet1', 'fleet2']
+ *                 passwordMessage:
+ *                   type: string
+ *                   description: A message indicating the password was updated
+ *                   example: 'Password updated successfully'
+ *       400:
+ *         description: There were validation errors
+ *       403:
+ *         description: The user is not allowed to update certain fields
+ *       404:
+ *         description: The user was not found
+ *       500:
+ *         description: There was an error on the server
+ */
+router.patch('/:userId', 
   authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), 
   checkUserIdMiddleware(), 
   [ 
@@ -182,8 +381,38 @@ router.put('/:userId',
     }
 });
 
-// Delete a specific user by ID
-router.delete('/', authenticateTokenAndAuthorization(['admin']), checkUserIdMiddleware(), async (req, res) => {
+/**
+ * @swagger
+ * /users/{userId}:
+ *   delete:
+ *     summary: Delete a specific user by ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *         example: 5f9a2c7b9d9d8b2b1c7d7b9d
+ *     responses:
+ *       200:
+ *         description: The user was successfully deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the user was deleted
+ *                   example: 'User deleted successfully'
+ *       404:
+ *         description: The user was not found
+ *       500:
+ *         description: There was an error on the server
+ */
+router.delete('/:userId', authenticateTokenAndAuthorization(['admin']), checkUserIdMiddleware(), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {

@@ -7,6 +7,90 @@ const User = require('../../models/users');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 
+/**
+ * @swagger
+ * /register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *               - email
+ *               - name
+ *               - age
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The user's username
+ *                 example: 'Driver123'
+ *               password:
+ *                 type: string
+ *                 description: The user's password
+ *                 example: 'Password123'
+ *               email:
+ *                 type: string
+ *                 description: The user's email
+ *                 example: 'driver@example.com'
+ *               name:
+ *                 type: string
+ *                 description: The user's name
+ *                 example: 'John Doe'
+ *               age:
+ *                 type: integer
+ *                 description: The user's age
+ *                 example: 25
+ *     responses:
+ *       201:
+ *         description: The user was successfully created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the user was created
+ *                 createdUser:
+ *                   type: object
+ *                   properties:
+ *                     username:
+ *                       type: string
+ *                       description: The user's username
+ *                       example: 'Driver123'
+ *                     name:
+ *                       type: string
+ *                       description: The user's name
+ *                       example: 'John Doe'
+ *                     email:
+ *                       type: string
+ *                       description: The user's email
+ *                       example: 'driver@example.com'
+ *                     age:
+ *                       type: integer
+ *                       description: The user's age
+ *                       example: 25
+ *                     roles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     boundedFleets:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     active:
+ *                       type: boolean
+ *       400:
+ *         description: There was a problem with the request body
+ *       500:
+ *         description: There was an error on the server
+ */
 router.post('/', 
 [
   body('username').trim().isLength({ min: 5, max: 20 }).withMessage('Username must be between 5 and 20 characters'),
@@ -26,7 +110,7 @@ router.post('/',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      console.log('Request Body: kontol', req.body);
+      console.log('Request Body:', req.body);
 
       const expectedFields = ['username', 'password', 'email', 'name', 'age'];
 
@@ -77,7 +161,7 @@ router.post('/',
       roles: result.roles,
       boundedFleets: result.boundedFleets,
       active: result.active,
-};
+    };
 
     console.log(createdUser);
     res.status(201).json({

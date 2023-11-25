@@ -9,8 +9,26 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+
 // Import routes
 const v1Routes = require('../api/routes/v1/');
+
+// Swagger options
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'My API',
+      version: '1.0.0',
+    },
+  },
+  apis: ['./api/routes/v1/*.js'], // files containing annotations as above
+};
+
+// Initialize swagger-jsdoc -> returns validated swagger spec in json format
+const specs = swaggerJsdoc(options);
 
 // MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;
@@ -34,32 +52,7 @@ app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(helmet()); // Adds security headers to HTTP response
-
-// // Set up the MongoDB session store
-// const store = new MongoDBStore({
-//   uri: mongooseURI,
-//   collection: 'sessions'
-// });
-
-// // Catch errors in the MongoDB session store
-// store.on('error', (error) => {
-//   console.error('MongoDB session store error:', error);
-// });
-
-// // Set up the express-session middleware
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: {
-//       httpOnly: true,
-//       sameSite: 'strict',
-//       maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
-//     },
-//     store: store
-//   })
-// );
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs)); // Swagger API documentation
 
 // CORS handling
 app.use((req, res, next) => {

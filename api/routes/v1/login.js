@@ -4,7 +4,57 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../../models/users'); // adjust the path as needed
 
-// Login route
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Log in a user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - usernameOrEmail
+ *               - password
+ *             properties:
+ *               usernameOrEmail:
+ *                 type: string
+ *                 description: The user's username or email
+ *                 example: 'Driver123'
+ *               password:
+ *                 type: string
+ *                 description: The user's password
+ *                 example: 'Password123'
+ *     responses:
+ *       200:
+ *         description: The user was successfully logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the user was logged in
+ *                   example: 'Logged in successfully'
+ *                 accessToken:
+ *                   type: string
+ *                   description: The access token for the user
+ *                   example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+ *                 refreshToken:
+ *                   type: string
+ *                   description: The refresh token for the user
+ *                   example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+ *       400:
+ *         description: There was a problem with the request body
+ *       401:
+ *         description: Invalid username or password
+ *       500:
+ *         description: There was an error on the server
+ */
 router.post('/', async (req, res) => {
   try {
     const { usernameOrEmail, password } = req.body;
