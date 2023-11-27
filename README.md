@@ -1,6 +1,7 @@
 # RESTful-API_Jaramba
 
 **DON'T FORGET TO CHANGE THE SENSITIVE DATA IN THE .env FILE**
+
 DONT FORGET TO INSTALL NODE.JS AND NPM
  
 To run the project, you need to type the following command in the terminal:
