@@ -18,3 +18,8 @@ If you want to stop the project, you can use the following command:
 If you want to run the project as a container, you can use the following command:
 1. Clone the docker-compose.yml file
 2. `docker-compose up -d`
+
+
+## API Documentation
+For requests to the API, you can use the following endpoints:
+http://localhost:3000/api-docs/#/
