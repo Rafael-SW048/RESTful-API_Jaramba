@@ -3,6 +3,15 @@
 **DON'T FORGET TO CHANGE THE SENSITIVE DATA IN THE .env FILE**
 
 DONT FORGET TO INSTALL NODE.JS AND NPM
+`sudo apt-get install nodejs npm`
+
+First of all, you need to install docker and docker-compose:
+1. `sudo apt-get update`
+2. `sudo apt-get install docker-ce docker-ce-cli containerd.io`
+3. `sudo apt-get install docker-compose`
+
+Next, you need to edit the docker-compose.yml file so only create MongoDB-Server and MongoDB-Dashboard containers, delete the API-Jaramba part:
+Then, run `docker-compose up -d` to create the containers.
  
 To run the project, you need to type the following command in the terminal:
 1. `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git`

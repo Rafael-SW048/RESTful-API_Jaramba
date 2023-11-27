@@ -40,22 +40,6 @@ services:
     depends_on:
       - MongoDB-Server
 
-  API-Jaramba:
-    image: kyukirel/api-jaramba
-    container_name: API-Jaramba
-    ports:
-      - "3000:3000"
-    environment:
-      MONGO_DB_URL: mongodb://db-username:db-password@172.18.0.2:27017/
-    networks:
-      - dataBase-network
-    depends_on:
-      - MongoDB-Server
-    volumes:
-     - type: bind
-       source: ./wait-for.sh
-       target: /wait-for.sh
-
 networks:
   dataBase-network:
     driver: bridge
