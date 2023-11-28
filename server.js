@@ -1,3 +1,5 @@
+// server.js
+
 const http = require('http');
 const app = require('./src/app');
 const helmet = require('helmet');
@@ -31,4 +33,3 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
   process.exit(1);
 });
-

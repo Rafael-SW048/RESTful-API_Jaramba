@@ -1,34 +1,18 @@
+// app.js
+
 require('dotenv').config(); // Load environment variables from .env file
 
 const express = require('express');
-// const session = require('express-session');
-const MongoDBStore = require('connect-mongodb-session')//(session);
+
 const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
-
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
+const setupSwagger = require('./swaggerSetup'); // Import the swaggerSetup module
 
 // Import routes
 const v1Routes = require('../api/routes/v1/');
-
-// Swagger options
-const options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'My API',
-      version: '1.0.0',
-    },
-  },
-  apis: ['./api/routes/v1/*.js'], // files containing annotations as above
-};
-
-// Initialize swagger-jsdoc -> returns validated swagger spec in json format
-const specs = swaggerJsdoc(options);
 
 // MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;
@@ -58,7 +42,9 @@ app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(helmet()); // Adds security headers to HTTP response
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs)); // Swagger API documentation
+
+// Set up Swagger
+setupSwagger(app);
 
 // CORS handling
 app.use((req, res, next) => {
@@ -95,4 +81,5 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Export the app
 module.exports = app;

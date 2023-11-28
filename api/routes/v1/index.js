@@ -46,7 +46,8 @@ router.use('/fleetLocations', fleetLocations); // Handles fleet location-related
 router.use((req, res) => {
   res.status(404).json({
     error: {
-      message: 'Not found. Invalid route.',
+      code: 404,
+      message: 'Not found. Invalid route or method.',
     },
   });
 });
