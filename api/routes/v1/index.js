@@ -28,10 +28,25 @@ const refreshRoute = require('./refresh');
  */
 
 router.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Welcome to the Fleet Management API!',
-    version: '1.0.0',
-  });
+  // Check if the User-Agent header contains the name of a common browser
+  const userAgent = req.headers['user-agent'];
+  const isBrowser = /Chrome|Firefox|Safari|Edge|MSIE|Trident|Brave|Opera|OPR|SamsungBrowser|UCBrowser/.test(userAgent);
+
+
+  if (isBrowser) {
+    // If it's a browser, send a response with a meta refresh tag and a redirect message
+    res.send(`
+      <p>Welcome to the Fleet Management API! Version: 1.0.0</p>
+      <p>You will be redirected to the API documentation in 3 seconds...</p>
+      <meta http-equiv="refresh" content="3;url=/api-docs" />
+    `);
+  } else {
+    // If it's not a browser, send a normal API response
+    res.status(200).json({
+      message: 'Welcome to the Fleet Management API!',
+      version: '1.0.0',
+    });
+  }
 });
 
 // Sub-routes

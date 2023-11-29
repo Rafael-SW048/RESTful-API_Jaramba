@@ -9,6 +9,18 @@ const options = {
       title: 'My API',
       version: '1.0.0',
     },
+    components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [{
+      BearerAuth: []
+    }]
   },
   apis: ['./api/routes/v1/*.js'], // files containing annotations as above
 };
@@ -17,7 +29,11 @@ const options = {
 const specs = swaggerJsdoc(options);
 
 function setupSwagger(app) {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs)); // Swagger API documentation
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs)); // Swagger UI
+  app.get('/api-docs.json', (req, res) => { // Swagger JSON
+    res.setHeader('Content-Type', 'application/json');
+    res.send(specs);
+  });
 }
 
 module.exports = setupSwagger;
