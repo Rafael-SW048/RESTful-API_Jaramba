@@ -42,7 +42,7 @@ async function registerData() {
       age: 30,
       roles: ['admin', 'hcm', 'driver'],
       boundedFleets: [],
-      active: false,
+      active: true,
     });
 
     await superadmin.save();
@@ -57,7 +57,7 @@ async function registerData() {
       age: 30,
       roles: ['admin'],
       boundedFleets: [],
-      active: false,
+      active: true,
     });
 
     const admin2 = new User({
@@ -69,7 +69,7 @@ async function registerData() {
       age: 30,
       roles: ['admin'],
       boundedFleets: [],
-      active: false,
+      active: true,
     });
 
     // Save the admin users to the database
