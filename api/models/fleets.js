@@ -37,9 +37,12 @@ const fleetSchema = new mongoose.Schema({
     default: null,
     validate: {
       validator: async function(v) {
+        if (v === null) {
+          return true; // Allow null value for driverId
+        }
         const fleet = this.parent();
-        const driver = await mongoose.model('User').findOne({ _id: v, role: 'driver', active: true });
-        return !!driver && fleet.active;
+        const driver = await mongoose.model('User').findOne({ _id: v, active: true });
+        return driver && driver.roles.includes('driver') && fleet.active;
       },
       message: 'Driver ID must reference a user role "driver", an active driver, and the fleet must be active',
     },

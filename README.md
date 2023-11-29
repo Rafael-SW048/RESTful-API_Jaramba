@@ -2,37 +2,43 @@
 
 **DON'T FORGET TO CHANGE THE SENSITIVE DATA IN THE .env FILE**
 
-DONT FORGET TO INSTALL NODE.JS AND NPM
-`sudo apt-get install nodejs npm`
+## Prerequisites
+Before running the project, make sure you have the following installed:
+- Node.js and npm: `sudo apt-get install nodejs npm`
+- Docker and Docker Compose:
 
-First of all, you need to install docker and docker-compose:
+## Installation
 1. `sudo apt-get update`
 2. `sudo apt-get install docker-ce docker-ce-cli containerd.io`
 3. `sudo apt-get install docker-compose`
 
-Next, you need to edit the docker-compose.yml file so only create MongoDB-Server and MongoDB-Dashboard containers, delete the API-Jaramba part:
-Then, run `docker-compose up -d` to create the containers.
- 
-To run the project, you need to type the following command in the terminal:
-1. `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git`
-2. `cd RESTful-API_Jaramba`
-3. `npm install`
-4. `npm start`
+## Setup
+1. Clone the repository: `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git`
+2. Navigate to the project directory: `cd RESTful-API_Jaramba`
+3. Install dependencies: `npm install`
 
-If you want to run the project in the background, you can use the following command:
-1. `npm install -g pm2`
-2. `pm2 start server.js`
-3. `pm2 startup`
-4. `pm2 save`
+## Running the Project
+To run the project, follow these steps:
+1. Start the MongoDB server and dashboard containers: `docker-compose up -d`
+2. Start the project: `npm start`
 
-If you want to stop the project, you can use the following command:
-1. `pm2 stop server.js` or ctrl + c in the terminal
+## Running in the Background
+If you want to run the project in the background, you can use PM2:
+1. Install PM2 globally: `npm install -g pm2`
+2. Start the project with PM2: `pm2 start server.js`
+3. Set PM2 to start on system boot: `pm2 startup`
+4. Save the current process list for automatic startup: `pm2 save`
 
-If you want to run the project as a container, you can use the following command:
+## Stopping the Project
+To stop the project, you can use PM2 or Ctrl+C in the terminal:
+- Using PM2: `pm2 stop server.js`
+- Ctrl+C in the terminal
+
+## Running as a Container
+To run the project as a container, follow these steps:
 1. Clone the docker-compose.yml file
-2. `docker-compose up -d`
-
+2. Start the containers: `docker-compose up -d`
 
 ## API Documentation
 For requests to the API, you can use the following endpoints:
-http://localhost:3000/api-docs/#/
+- [API Documentation](http://localhost:3000/api-docs/#/)

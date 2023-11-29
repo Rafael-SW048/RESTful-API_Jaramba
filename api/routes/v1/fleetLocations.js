@@ -25,6 +25,9 @@ async function deactivateDriverAndFleet(driverId, fleetId) {
   }
 }
 
+// Declare active timers for each driver
+const activeTimers = {};
+
 /**
  * @swagger
  * /fleetLocations/drive:
@@ -62,7 +65,7 @@ async function deactivateDriverAndFleet(driverId, fleetId) {
  */
 router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   try {
-    const driverId = req.user.id;
+    const driverId = req.user._id;
     const { fleetId } = req.body;
 
     // Find the driver and the fleet
@@ -83,23 +86,42 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
     if (fleet.active) {
       return res.status(400).json({ error: 'Fleet is already active' });
     }
-
     if (!driver.boundedFleets.includes(fleet._id)) {
       return res.status(400).json({ error: 'Driver is not bound to this fleet' });
     }
 
     // Activate the driver to the fleet
     driver.active = true;
+    await driver.save();
+
     fleet.active = true;
+    await fleet.save();
+
+    console.log(driver.active, driver.roles, fleet.active)
     fleet.driverId = driverId;
+    await fleet.save();
+
+    activeTimers[driverId] = setTimeout(() => {
+      deactivateDriverAndFleet(driverId, fleetId);
+    }, 1800000); // 30 minutes
+
+    res.status(200).json({ message: 'Driving started successfully' });
+  } catch (err) {
+    const driverId = req.user._id;
+    const { fleetId } = req.body;
+
+    // Find the driver and the fleet
+    const driver = await User.findById(driverId);
+    const fleet = await Fleet.findById(fleetId);
+
+    driver.active = false;
+    fleet.active = false;
 
     await driver.save();
     await fleet.save();
 
-    res.status(200).json({ message: 'Driving started successfully' });
-  } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', message: err});
   }
 });
 
@@ -161,10 +183,27 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
       return res.status(400).json({ error: 'Driver is not bound to this fleet' });
     }
 
+    if (!driver.boundedFleets.includes(fleet._id)) {
+      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
+    }
+    
+    // Find all fleet locations for the fleet sorted by date in descending order
+    const fleetLocations = await FleetLocation.find({ fleetId: fleet._id }).sort({ date: -1 });
+    
+    // If there are fleet locations, move all except the newest one to oldFleetLocations
+    if (fleetLocations.length > 1) {
+      const [newestLocation, ...oldLocations] = fleetLocations;
+      await Promise.all(oldLocations.map(async (location) => {
+        const oldFleetLocation = new OldFleetLocation(location.toObject());
+        await oldFleetLocation.save();
+        await FleetLocation.findByIdAndDelete(location._id);
+      }));
+    }
+
     // Deactivate the driver and the fleet
+    fleet.driverId = null;
     driver.active = false;
     fleet.active = false;
-    fleet.driverId = null;
 
     await driver.save();
     await fleet.save();
@@ -260,20 +299,24 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  */
 router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   try {
-    if (!req.body.location || !req.body.driverId || (!req.body.fleetId && !req.body.licencePlate)) {
+    if (!req.body.location || (!req.body.fleetId && !req.body.licencePlate)) {
       return res.status(400).json({ error: 'Invalid fleet location data format' });
     };
 
     let fleetId = req.body.fleetId;
+    let fleet;
     if (!fleetId) {
-      const fleet = await Fleet.findOne({ licencePlate: req.body.licencePlate });
+      fleet = await Fleet.findOne({ licencePlate: req.body.licencePlate });
       if (!fleet) {
-        return res.status(404).json({ error: 'Fleet not found' });
+        return res.status(404).json({ error: 'Fleet not found. Check the fleet ID or Licence Plate' });
       }
       fleetId = fleet._id;
-    }
+    } else {
+      fleet = await Fleet.findById(fleetId);
+    };
 
-    const { driverId, location } = req.body;
+    const { location } = req.body;
+    const driverId = req.user._id;
 
     // Check if the driver is bound to the fleet
     const driver = await User.findById(driverId);
@@ -294,7 +337,7 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
     }
 
     // Check if the driverId inside fleet is the same as the driver id
-    if (fleet.driverId !== driverId) {
+    if (driverId.toString() !== fleet.driverId.toString()) {
       return res.status(400).json({ error: 'Driver ID does not match the driver ID in the fleet' });
     }
 
@@ -312,7 +355,7 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
     clearTimeout(activeTimers[driverId]);
     activeTimers[driverId] = setTimeout(() => {
       deactivateDriverAndFleet(driverId, fleetId);
-    }, 300000); // 5 minutes
+    }, 1800000); // 30 minutes
 
     // Find the fourth newest location
     const sixthNewestLocation = await FleetLocation

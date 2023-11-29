@@ -361,17 +361,18 @@ router.patch('/:userId',
       const responseUser = {
         _id: updatedUser._id,
         username: updatedUser.username,
+        updatedField: {},
       };
 
       for (const field of Object.keys(updateOps)) {
         if (field !== 'password') {
-          responseUser[field] = updatedUser[field];
+          responseUser.updatedField[field] = updatedUser[field];
         }
       }
 
       const response = { message: 'User updated successfully', user: responseUser };
       if (passwordUpdated) {
-        response.passwordMessage = 'Password updated successfully';
+        response.user.updatedField[passwordMessage] = 'Password updated successfully';
       }
 
       res.status(200).json(response);

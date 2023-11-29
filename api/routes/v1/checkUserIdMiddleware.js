@@ -5,7 +5,7 @@ function checkUserIdMiddleware() {
     // Check if the user ID is authorized to change the data
 
 
-    if (userId === req.sender._id.toString() || req.sender.roles.includes('admin')) {
+    if (userId === req.user._id.toString() || req.user.roles.includes('admin')) {
       next(); // User ID is authorized, proceed to the next middleware or route handler
     } else {
       res.status(403).json({ error: 'Unauthorized: You are not allowed to perform this action.' }); // User ID is not authorized, send a 403 Forbidden response with an informative error message
