@@ -100,6 +100,9 @@ router.post('/',
   body('age').isInt({ gt: 0 }).withMessage('Age must be a positive integer'),
 ],
   async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       console.log('Received a POST request to /users');
 
@@ -118,61 +121,69 @@ router.post('/',
         return res.status(400).json({ error: 'Invalid user data format' });
       };
 
-    // Extract relevant data from the request
-    const { username, password, email, name, age} = req.body;
+      // Extract relevant data from the request
+      const { username, password, email, name, age} = req.body;
 
-    // Check if the username already exists in the database
-    const existingUserByUsername = await User.findOne({ username }).exec();
-    const existingUserByEmail = await User.findOne({ email }).exec();
-    
-    if (existingUserByUsername) {
-      return res.status(400).json({ error: 'Username already exists' });
+      // Check if the username already exists in the database
+      const existingUserByUsername = await User.findOne({ username }).exec();
+      const existingUserByEmail = await User.findOne({ email }).exec();
+      
+      if (existingUserByUsername) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      
+      if (existingUserByEmail) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+      
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create a new user object
+      const newUser = new User({
+        _id: new mongoose.Types.ObjectId(),
+        username,
+        password: hashedPassword,
+        email,
+        name,
+        age,
+        roles: ["driver"],
+        boundedFleets: [],
+        active: false,
+      });
+
+      // Save the user data within the session
+      await newUser.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      // Create a new object with only the data you want to send back
+      const createdUser = {
+        username: newUser.username,
+        name: newUser.name,
+        email: newUser.email,
+        age: newUser.age,
+        roles: newUser.roles,
+        boundedFleets: newUser.boundedFleets,
+        active: newUser.active,
+      };
+
+      console.log(createdUser);
+      res.status(201).json({
+        message: 'User created successfully',
+        createdUser,
+      });
+
+    } catch (error) {
+      console.error(error);
+      // Rollback the transaction in case of an error
+      await session.abortTransaction();
+      res.status(500).json({ error: error.message });
+    } finally {
+      // End the session
+      session.endSession();
     }
-    
-    if (existingUserByEmail) {
-      return res.status(400).json({ error: 'Email already exists' });
-    }
-    
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create a new user object
-    const newUser = new User({
-      _id: new mongoose.Types.ObjectId(),
-      username,
-      password: hashedPassword,
-      email,
-      name,
-      age,
-      roles: ["driver"],
-      boundedFleets: [],
-      active: false,
-    });
-
-    // Save the user data
-    const result = await newUser.save();
-
-    // Create a new object with only the data you want to send back
-    const createdUser = {
-      username: result.username,
-      name: result.name,
-      email: result.email,
-      age: result.age,
-      roles: result.roles,
-      boundedFleets: result.boundedFleets,
-      active: result.active,
-    };
-
-    console.log(createdUser);
-    res.status(201).json({
-      message: 'User created successfully',
-      createdUser,
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 module.exports = router;

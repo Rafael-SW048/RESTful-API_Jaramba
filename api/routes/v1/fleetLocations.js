@@ -12,16 +12,28 @@ const authenticateTokenAndAuthorization = require('./authMiddleware');
 const checkUserIdMiddleware = require('./checkUserIdMiddleware');
 
 async function deactivateDriverAndFleet(driverId, fleetId) {
-  const driver = await User.findById(driverId);
-  const fleet = await Fleet.findById(fleetId);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (driver && fleet) {
-    driver.active = false;
-    fleet.active = false;
-    fleet.driverId = null;
+  try {
+    const driver = await User.findById(driverId).session(session);
+    const fleet = await Fleet.findById(fleetId).session(session);
 
-    await driver.save();
-    await fleet.save();
+    if (driver && fleet) {
+      driver.active = false;
+      fleet.active = false;
+      fleet.driverId = null;
+
+      await driver.save({ session });
+      await fleet.save({ session });
+    }
+
+    await session.commitTransaction();
+  } catch (err) {
+    console.error(err);
+    await session.abortTransaction();
+  } finally {
+    session.endSession();
   }
 }
 
@@ -64,13 +76,16 @@ const activeTimers = {};
  *         description: There was an error on the server
  */
 router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const driverId = req.user._id;
     const { fleetId } = req.body;
 
     // Find the driver and the fleet
-    const driver = await User.findById(driverId);
-    const fleet = await Fleet.findById(fleetId);
+    const driver = await User.findById(driverId).session(session);
+    const fleet = await Fleet.findById(fleetId).session(session);
 
     // Check if the fleet exist
     if (!fleet) {
@@ -92,36 +107,26 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
 
     // Activate the driver to the fleet
     driver.active = true;
-    await driver.save();
-
     fleet.active = true;
-    await fleet.save();
-
-    console.log(driver.active, driver.roles, fleet.active)
     fleet.driverId = driverId;
-    await fleet.save();
+
+    await driver.save({ session });
+    await fleet.save({ session });
+
+    await session.commitTransaction();
+
+    res.status(200).json({ message: 'Driving started successfully' });
 
     activeTimers[driverId] = setTimeout(() => {
       deactivateDriverAndFleet(driverId, fleetId);
     }, 1800000); // 30 minutes
 
-    res.status(200).json({ message: 'Driving started successfully' });
   } catch (err) {
-    const driverId = req.user._id;
-    const { fleetId } = req.body;
-
-    // Find the driver and the fleet
-    const driver = await User.findById(driverId);
-    const fleet = await Fleet.findById(fleetId);
-
-    driver.active = false;
-    fleet.active = false;
-
-    await driver.save();
-    await fleet.save();
-
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({ error: 'Internal server error', message: err});
+  } finally {
+    session.endSession();
   }
 });
 
@@ -161,13 +166,16 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
  *         description: There was an error on the server
  */
 router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const driverId = req.user.id;
     const { fleetId } = req.body;
 
     // Find the driver and the fleet
-    const driver = await User.findById(driverId);
-    const fleet = await Fleet.findById(fleetId);
+    const driver = await User.findById(driverId).session(session);
+    const fleet = await Fleet.findById(fleetId).session(session);
 
     // Check if the fleet exist
     if (!fleet) {
@@ -187,16 +195,13 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
       return res.status(400).json({ error: 'Driver is not bound to this fleet' });
     }
     
-    // Find all fleet locations for the fleet sorted by date in descending order
-    const fleetLocations = await FleetLocation.find({ fleetId: fleet._id }).sort({ date: -1 });
-    
     // If there are fleet locations, move all except the newest one to oldFleetLocations
     if (fleetLocations.length > 1) {
       const [newestLocation, ...oldLocations] = fleetLocations;
       await Promise.all(oldLocations.map(async (location) => {
         const oldFleetLocation = new OldFleetLocation(location.toObject());
-        await oldFleetLocation.save();
-        await FleetLocation.findByIdAndDelete(location._id);
+        await oldFleetLocation.save({ session });
+        await FleetLocation.findByIdAndDelete(location._id).session(session);
       }));
     }
 
@@ -205,13 +210,18 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
     driver.active = false;
     fleet.active = false;
 
-    await driver.save();
-    await fleet.save();
+    await driver.save({ session });
+    await fleet.save({ session });
+
+    await session.commitTransaction();
 
     res.status(200).json({ message: 'Driving stopped successfully' });
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -298,6 +308,9 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  *         description: There was an error on the server
  */
 router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     if (!req.body.location || (!req.body.fleetId && !req.body.licencePlate)) {
       return res.status(400).json({ error: 'Invalid fleet location data format' });
@@ -305,6 +318,7 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
 
     let fleetId = req.body.fleetId;
     let fleet;
+
     if (!fleetId) {
       fleet = await Fleet.findOne({ licencePlate: req.body.licencePlate });
       if (!fleet) {
@@ -349,7 +363,7 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
       timestamp: new Date().toISOString(),
     });
     
-    const result = await newFleetLocation.save();
+    const result = await newFleetLocation.save({ session });
 
     // Reset the timer for this driver & fleet
     clearTimeout(activeTimers[driverId]);
@@ -365,12 +379,13 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
 
     // If a sixth newest location exists, move it to the old locations collection
     if (sixthNewestLocation) {
-    const oldFleetLocation = new OldFleetLocation(sixthNewestLocation.toObject());
-    await oldFleetLocation.save();
-    await FleetLocation.findByIdAndRemove(sixthNewestLocation._id );
+      const oldFleetLocation = new OldFleetLocation(sixthNewestLocation.toObject());
+      await oldFleetLocation.save({ session });
+      await FleetLocation.findByIdAndRemove(sixthNewestLocation._id).session(session);
     }
 
-    console.log(result);
+    await session.commitTransaction();
+
     res.status(201).json({
       message: 'Fleet location created successfully',
       createdFleetLocation: result,
@@ -378,10 +393,13 @@ router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res)
 
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -819,22 +837,31 @@ router.get('/old/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'dr
  *         description: There was an error on the server
  */
 router.patch('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const fleetLocationId = req.params.fleetLocationId;
     const updateOps = req.body;
 
-    const updatedFleetLocation = await FleetLocation.findByIdAndUpdate(fleetLocationId, { $set: updateOps }, { new: true }).exec();
+    const updatedFleetLocation = await FleetLocation.findByIdAndUpdate(fleetLocationId, { $set: updateOps }, { new: true, session }).exec();
 
     if (!updatedFleetLocation) {
+      await session.abortTransaction();
       return res.status(404).json({ message: 'Fleet location not found' });
     }
+
+    await session.commitTransaction();
     res.status(200).json({ message: 'Fleet location updated successfully', updatedFleetLocation });
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -925,23 +952,31 @@ router.patch('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), 
  *         description: There was an error on the server
  */
 router.patch('/old/:oldFleetLocationId', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const id = req.params.oldFleetLocationId;
     const updates = req.body;
 
-    const oldFleetLocation = await OldFleetLocation.findByIdAndUpdate(id, updates, { new: true });
+    const oldFleetLocation = await OldFleetLocation.findByIdAndUpdate(id, updates, { new: true, session });
 
     if (!oldFleetLocation) {
+      await session.abortTransaction();
       res.status(404).json({ message: 'No old fleet location found with this ID.' });
     } else {
+      await session.commitTransaction();
       res.status(200).json(oldFleetLocation);
     }
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -977,19 +1012,29 @@ router.patch('/old/:oldFleetLocationId', authenticateTokenAndAuthorization(['adm
  *         description: There was an error on the server
  */
 router.delete('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const fleetLocationId = req.params.fleetLocationId;
-    const result = await FleetLocation.findByIdAndRemove(fleetLocationId).exec();
+    const result = await FleetLocation.findByIdAndRemove(fleetLocationId).session(session).exec();
+
     if (!result) {
+      await session.abortTransaction();
       return res.status(404).json({ message: 'Fleet location not found' });
     }
+
+    await session.commitTransaction();
     res.status(200).json({ message: 'Fleet location deleted successfully' });
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -1028,19 +1073,29 @@ router.delete('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']),
  *         description: There was an error on the server
  */
 router.delete('/oldFleetLocation', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const oldFleetLocation = req.body.oldFleetLocation;
-    const result = await FleetLocation.findOneAndDelete({ fleetLocation: oldFleetLocation }).exec();
+    const result = await FleetLocation.findOneAndDelete({ fleetLocation: oldFleetLocation }).session(session).exec();
+
     if (!result) {
+      await session.abortTransaction();
       return res.status(404).json({ message: 'Old Fleet location not found' });
     }
+
+    await session.commitTransaction();
     res.status(200).json({ message: 'Old Fleet location deleted successfully' });
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 

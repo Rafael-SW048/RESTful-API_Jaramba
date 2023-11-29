@@ -296,6 +296,9 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver
  *         description: There was an error on the server
  */
 router.post('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const expectedFields = ['licencePlate', 'type', 'route', 'routeNumber'];
 
@@ -330,25 +333,31 @@ router.post('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req
     });
 
     // Check if a fleet with the same licencePlate already exists
-    const existingFleet = await Fleet.findOne({ licencePlate });
+    const existingFleet = await Fleet.findOne({ licencePlate }).session(session);
 
     if (existingFleet) {
       return res.status(400).json({
         message: 'Fleet with this licencePlate already exists',
       });
     }
-    const result = await newFleet.save();
+    const result = await newFleet.save({ session });
     console.log(result);
+
+    await session.commitTransaction();
+
     res.status(201).json({
       message: 'Fleet created successfully',
       createdFleet: result,
     });
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -403,8 +412,11 @@ router.patch('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), a
     updateOps[ops.propName] = ops.value;
   }
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const result = await Fleet.updateOne({ _id: fleetId }, { $set: updateOps }).exec();
+    const result = await Fleet.updateOne({ _id: fleetId }, { $set: updateOps }).session(session).exec();
 
     if (result.acknowledged) {
       if (result.modifiedCount > 0) {
@@ -418,12 +430,17 @@ router.patch('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), a
       console.log('Fleet not found');
       res.status(404).json({ message: 'Fleet not found' });
     }
+
+    await session.commitTransaction();
   } catch (err) {
     console.log('Error during update:', err);
+    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -459,15 +476,20 @@ router.patch('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), a
  *         description: There was an error on the server
  */
 router.delete('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const fleetId = req.params.fleetId;
-    const fleet = await Fleet.findById(fleetId).exec();
+    const fleet = await Fleet.findById(fleetId).session(session).exec();
 
     if (fleet) {
       const deletedFleet = new DeletedFleet(fleet.toObject());
-      await deletedFleet.save();
+      await deletedFleet.save({ session });
 
-      await Fleet.findByIdAndRemove(fleetId).exec();
+      await Fleet.findByIdAndRemove(fleetId).session(session).exec();
+
+      await session.commitTransaction();
 
       res.status(200).json({ message: 'Fleet deleted successfully' });
     } else {
@@ -475,10 +497,13 @@ router.delete('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), 
     }
   } catch (err) {
     console.error(err);
+    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,
     });
+  } finally {
+    session.endSession();
   }
 });
 

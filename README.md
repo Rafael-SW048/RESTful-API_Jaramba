@@ -17,6 +17,10 @@ Before running the project, make sure you have the following installed:
 2. Navigate to the project directory: `cd RESTful-API_Jaramba`
 3. Install dependencies: `npm install`
 
+## Seeding the Database
+To seed the database with initial data for testing, run the `seedDatabase.js` script:
+1. `node seedDatabase.js`
+
 ## Running the Project
 To run the project, follow these steps:
 1. Start the MongoDB server and dashboard containers: `docker-compose up -d`

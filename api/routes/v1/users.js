@@ -330,6 +330,10 @@ router.patch('/:userId',
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       const userId = req.params.userId;
       const updateOps = req.body;
@@ -342,16 +346,14 @@ router.patch('/:userId',
         return res.status(403).json({ message: 'You are not allowed to update the following fields:', restrictedFields });
       }
 
-      let passwordUpdated = false;
       if (updateOps.password) {
         // Encrypt the password using bcrypt
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(updateOps.password, saltRounds);
+        const hashedPassword = await bcrypt.hash(updateOps.password, 10);
         updateOps.password = hashedPassword;
-        passwordUpdated = true;
       }
 
-      const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true }).exec();
+      const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true, session }).exec();
+
 
       if (!updatedUser) {
         return res.status(404).json({ message: 'User not found' });
@@ -374,6 +376,8 @@ router.patch('/:userId',
       if (passwordUpdated) {
         response.user.updatedField[passwordMessage] = 'Password updated successfully';
       }
+
+      await session.commitTransaction();
 
       res.status(200).json(response);
     } catch (err) {
@@ -414,20 +418,28 @@ router.patch('/:userId',
  *         description: There was an error on the server
  */
 router.delete('/:userId', authenticateTokenAndAuthorization(['admin']), checkUserIdMiddleware(), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).session(session);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     const deletedUser = new DeletedUser(user.toObject());
-    await deletedUser.save();
+    await deletedUser.save({ session });
 
-    await User.findByIdAndRemove(req.params.id);
+    await User.findByIdAndRemove(req.params.id).session(session);
+
+    await session.commitTransaction();
 
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
+    await session.abortTransaction();
     res.status(500).json({ error: err.message });
+  } finally {
+    session.endSession();
   }
 });
 
