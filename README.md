@@ -5,7 +5,7 @@
 ## Prerequisites
 Before running the project, make sure you have the following installed:
 - Node.js and npm: `sudo apt-get install nodejs npm`
-- Docker and Docker Compose:
+- Docker and Docker Compose: `sudo apt-get install docker docker-compose`
 
 ## Installation
 1. `sudo apt-get update`
