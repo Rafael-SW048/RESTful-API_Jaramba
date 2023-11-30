@@ -332,57 +332,57 @@ router.patch('/:userId',
     }
 
     const session = await mongoose.startSession();
-    session.startTransaction();
 
     try {
-      const userId = req.params.userId;
-      const updateOps = req.body;
+      await session.withTransaction(async () => {
+        const userId = req.params.userId;
+        const updateOps = req.body;
 
-      // Restricting the fields that can be updated
-      const allowedFields = ['password', 'email', 'name', 'age', 'boundedFleets'];
-      const restrictedFields = Object.keys(updateOps).filter(field => !allowedFields.includes(field));
+        // Restricting the fields that can be updated
+        const allowedFields = ['password', 'email', 'name', 'age', 'boundedFleets'];
+        const restrictedFields = Object.keys(updateOps).filter(field => !allowedFields.includes(field));
 
-      if (restrictedFields.length > 0) {
-        return res.status(403).json({ message: 'You are not allowed to update the following fields:', restrictedFields });
-      }
-
-      if (updateOps.password) {
-        // Encrypt the password using bcrypt
-        const hashedPassword = await bcrypt.hash(updateOps.password, 10);
-        updateOps.password = hashedPassword;
-      }
-
-      const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true, session }).exec();
-
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Create a new object with only the user ID, username, and updated fields
-      const responseUser = {
-        _id: updatedUser._id,
-        username: updatedUser.username,
-        updatedField: {},
-      };
-
-      for (const field of Object.keys(updateOps)) {
-        if (field !== 'password') {
-          responseUser.updatedField[field] = updatedUser[field];
+        if (restrictedFields.length > 0) {
+          return res.status(403).json({ message: 'You are not allowed to update the following fields:', restrictedFields });
         }
-      }
 
-      const response = { message: 'User updated successfully', user: responseUser };
-      if (passwordUpdated) {
-        response.user.updatedField[passwordMessage] = 'Password updated successfully';
-      }
+        if (updateOps.password) {
+          // Encrypt the password using bcrypt
+          const hashedPassword = await bcrypt.hash(updateOps.password, 10);
+          updateOps.password = hashedPassword;
+        }
 
-      await session.commitTransaction();
+        const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true, session }).exec();
 
-      res.status(200).json(response);
+        if (!updatedUser) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Create a new object with only the user ID, username, and updated fields
+        const responseUser = {
+          _id: updatedUser._id,
+          username: updatedUser.username,
+          updatedField: {},
+        };
+
+        for (const field of Object.keys(updateOps)) {
+          if (field !== 'password') {
+            responseUser.updatedField[field] = updatedUser[field];
+          }
+        }
+
+        const response = { message: 'User updated successfully', user: responseUser };
+        if (passwordUpdated) {
+          response.user.updatedField[passwordMessage] = 'Password updated successfully';
+        }
+
+        res.status(200).json(response);
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: err });
+    } finally {
+      session.endSession();
     }
 });
 
@@ -419,24 +419,22 @@ router.patch('/:userId',
  */
 router.delete('/:userId', authenticateTokenAndAuthorization(['admin']), checkUserIdMiddleware(), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const user = await User.findById(req.params.id).session(session);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    await session.withTransaction(async () => {
+      const user = await User.findById(req.params.id).session(session);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
 
-    const deletedUser = new DeletedUser(user.toObject());
-    await deletedUser.save({ session });
+      const deletedUser = new DeletedUser(user.toObject());
+      await deletedUser.save({ session });
 
-    await User.findByIdAndRemove(req.params.id).session(session);
-
-    await session.commitTransaction();
+      await User.findByIdAndRemove(req.params.id).session(session);
+    });
 
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
-    await session.abortTransaction();
     res.status(500).json({ error: err.message });
   } finally {
     session.endSession();

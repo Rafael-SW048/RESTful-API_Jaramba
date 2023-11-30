@@ -297,61 +297,59 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver
  */
 router.post('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const expectedFields = ['licencePlate', 'type', 'route', 'routeNumber'];
+    await session.withTransaction(async () => {
+      const expectedFields = ['licencePlate', 'type', 'route', 'routeNumber'];
 
-    if (!expectedFields.every((field) => field in req.body)) {
-      return res.status(400).json({
-        error: 'Invalid fleet data format',
+      if (!expectedFields.every((field) => field in req.body)) {
+        return res.status(400).json({
+          error: 'Invalid fleet data format',
+        });
+      }
+
+      const { licencePlate, type, route, routeNumber } = req.body;
+
+      // Validate data types of fields
+      if (typeof licencePlate !== 'string' ||
+          typeof type !== 'string' ||
+          typeof route !== 'object' ||
+          typeof route.start !== 'string' ||
+          typeof route.finish !== 'string' ||
+          typeof routeNumber !== 'number') {
+        return res.status(400).json({
+          error: 'Invalid data type for one or more fields',
+        });
+      }
+
+      const newFleet = new Fleet({
+        _id: new mongoose.Types.ObjectId(),
+        licencePlate,
+        type,
+        route,
+        routeNumber,
+        active: false,
+        driverId: null,
       });
-    }
 
-    const { licencePlate, type, route, routeNumber } = req.body;
+      // Check if a fleet with the same licencePlate already exists
+      const existingFleet = await Fleet.findOne({ licencePlate }).session(session);
 
-    // Validate data types of fields
-    if (typeof licencePlate !== 'string' ||
-        typeof type !== 'string' ||
-        typeof route !== 'object' ||
-        typeof route.start !== 'string' ||
-        typeof route.finish !== 'string' ||
-        typeof routeNumber !== 'number') {
-      return res.status(400).json({
-        error: 'Invalid data type for one or more fields',
+      if (existingFleet) {
+        return res.status(400).json({
+          message: 'Fleet with this licencePlate already exists',
+        });
+      }
+      const result = await newFleet.save({ session });
+      console.log(result);
+
+      res.status(201).json({
+        message: 'Fleet created successfully',
+        createdFleet: result,
       });
-    }
-
-    const newFleet = new Fleet({
-      _id: new mongoose.Types.ObjectId(),
-      licencePlate,
-      type,
-      route,
-      routeNumber,
-      active: false,
-      driverId: null,
-    });
-
-    // Check if a fleet with the same licencePlate already exists
-    const existingFleet = await Fleet.findOne({ licencePlate }).session(session);
-
-    if (existingFleet) {
-      return res.status(400).json({
-        message: 'Fleet with this licencePlate already exists',
-      });
-    }
-    const result = await newFleet.save({ session });
-    console.log(result);
-
-    await session.commitTransaction();
-
-    res.status(201).json({
-      message: 'Fleet created successfully',
-      createdFleet: result,
     });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,
@@ -413,28 +411,26 @@ router.patch('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), a
   }
 
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const result = await Fleet.updateOne({ _id: fleetId }, { $set: updateOps }).session(session).exec();
+    await session.withTransaction(async () => {
+      const result = await Fleet.updateOne({ _id: fleetId }, { $set: updateOps }).session(session).exec();
 
-    if (result.acknowledged) {
-      if (result.modifiedCount > 0) {
-        console.log('Fleet updated successfully');
-        res.status(200).json({ message: 'Fleet updated successfully' });
+      if (result.acknowledged) {
+        if (result.modifiedCount > 0) {
+          console.log('Fleet updated successfully');
+          res.status(200).json({ message: 'Fleet updated successfully' });
+        } else {
+          console.log('Fleet found but not modified');
+          res.status(200).json({ message: 'Fleet found but not modified' });
+        }
       } else {
-        console.log('Fleet found but not modified');
-        res.status(200).json({ message: 'Fleet found but not modified' });
+        console.log('Fleet not found');
+        res.status(404).json({ message: 'Fleet not found' });
       }
-    } else {
-      console.log('Fleet not found');
-      res.status(404).json({ message: 'Fleet not found' });
-    }
-
-    await session.commitTransaction();
+    });
   } catch (err) {
     console.log('Error during update:', err);
-    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,
@@ -477,27 +473,25 @@ router.patch('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), a
  */
 router.delete('/:fleetId', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const fleetId = req.params.fleetId;
-    const fleet = await Fleet.findById(fleetId).session(session).exec();
+    await session.withTransaction(async () => {
+      const fleetId = req.params.fleetId;
+      const fleet = await Fleet.findById(fleetId).session(session).exec();
 
-    if (fleet) {
-      const deletedFleet = new DeletedFleet(fleet.toObject());
-      await deletedFleet.save({ session });
+      if (fleet) {
+        const deletedFleet = new DeletedFleet(fleet.toObject());
+        await deletedFleet.save({ session });
 
-      await Fleet.findByIdAndRemove(fleetId).session(session).exec();
+        await Fleet.findByIdAndRemove(fleetId).session(session).exec();
 
-      await session.commitTransaction();
-
-      res.status(200).json({ message: 'Fleet deleted successfully' });
-    } else {
-      res.status(404).json({ message: 'Fleet not found' });
-    }
+        res.status(200).json({ message: 'Fleet deleted successfully' });
+      } else {
+        res.status(404).json({ message: 'Fleet not found' });
+      }
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: 'Internal server error',
       error: err,

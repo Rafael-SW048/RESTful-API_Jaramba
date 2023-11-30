@@ -13,25 +13,23 @@ const checkUserIdMiddleware = require('./checkUserIdMiddleware');
 
 async function deactivateDriverAndFleet(driverId, fleetId) {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const driver = await User.findById(driverId).session(session);
-    const fleet = await Fleet.findById(fleetId).session(session);
+    await session.withTransaction(async () => {
+      const driver = await User.findById(driverId).session(session);
+      const fleet = await Fleet.findById(fleetId).session(session);
 
-    if (driver && fleet) {
-      driver.active = false;
-      fleet.active = false;
-      fleet.driverId = null;
+      if (driver && fleet) {
+        driver.active = false;
+        fleet.active = false;
+        fleet.driverId = null;
 
-      await driver.save({ session });
-      await fleet.save({ session });
-    }
-
-    await session.commitTransaction();
+        await driver.save({ session });
+        await fleet.save({ session });
+      }
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
   } finally {
     session.endSession();
   }
@@ -77,53 +75,50 @@ const activeTimers = {};
  */
 router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const driverId = req.user._id;
-    const { fleetId } = req.body;
+    await session.withTransaction(async () => {
+      const driverId = req.user._id;
+      const { fleetId } = req.body;
 
-    // Find the driver and the fleet
-    const driver = await User.findById(driverId).session(session);
-    const fleet = await Fleet.findById(fleetId).session(session);
+      // Find the driver and the fleet
+      const driver = await User.findById(driverId).session(session);
+      const fleet = await Fleet.findById(fleetId).session(session);
 
-    // Check if the fleet exist
-    if (!fleet) {
-      if (driver.boundedFleets.includes(fleet._id)) {
-        const index = driver.boundedFleets.indexOf(fleet._id);
-        driver.boundedFleets.splice(index, 1);
-        await driver.save();
+      // Check if the fleet exist
+      if (!fleet) {
+        if (driver.boundedFleets.includes(fleet._id)) {
+          const index = driver.boundedFleets.indexOf(fleet._id);
+          driver.boundedFleets.splice(index, 1);
+          await driver.save();
+        }
+        return res.status(404).json({ error: 'Fleet not found' });
       }
-      return res.status(404).json({ error: 'Fleet not found' });
-    }
 
-    // Check if the fleet is already active
-    if (fleet.active) {
-      return res.status(400).json({ error: 'Fleet is already active' });
-    }
-    if (!driver.boundedFleets.includes(fleet._id)) {
-      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
-    }
+      // Check if the fleet is already active
+      if (fleet.active) {
+        return res.status(400).json({ error: 'Fleet is already active' });
+      }
+      if (!driver.boundedFleets.includes(fleet._id)) {
+        return res.status(400).json({ error: 'Driver is not bound to this fleet' });
+      }
 
-    // Activate the driver to the fleet
-    driver.active = true;
-    fleet.active = true;
-    fleet.driverId = driverId;
+      // Activate the driver to the fleet
+      driver.active = true;
+      fleet.active = true;
+      fleet.driverId = driverId;
 
-    await driver.save({ session });
-    await fleet.save({ session });
+      await driver.save({ session });
+      await fleet.save({ session });
 
-    await session.commitTransaction();
+      res.status(200).json({ message: 'Driving started successfully' });
 
-    res.status(200).json({ message: 'Driving started successfully' });
-
-    activeTimers[driverId] = setTimeout(() => {
-      deactivateDriverAndFleet(driverId, fleetId);
-    }, 1800000); // 30 minutes
-
+      activeTimers[driverId] = setTimeout(() => {
+        deactivateDriverAndFleet(driverId, fleetId);
+      }, 1800000); // 30 minutes
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({ error: 'Internal server error', message: err});
   } finally {
     session.endSession();
@@ -167,58 +162,56 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
  */
 router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const driverId = req.user.id;
-    const { fleetId } = req.body;
+    await session.withTransaction(async () => {
+      const driverId = req.user.id;
+      const { fleetId } = req.body;
 
-    // Find the driver and the fleet
-    const driver = await User.findById(driverId).session(session);
-    const fleet = await Fleet.findById(fleetId).session(session);
+      // Find the driver and the fleet
+      const driver = await User.findById(driverId).session(session);
+      const fleet = await Fleet.findById(fleetId).session(session);
 
-    // Check if the fleet exist
-    if (!fleet) {
-      return res.status(404).json({ error: 'Fleet not found' });
-    }
+      // Check if the fleet exist
+      if (!fleet) {
+        return res.status(404).json({ error: 'Fleet not found' });
+      }
 
-    // Check if the fleet is not active
-    if (!fleet.active) {
-      return res.status(400).json({ error: 'Fleet is not active' });
-    }
+      // Check if the fleet is not active
+      if (!fleet.active) {
+        return res.status(400).json({ error: 'Fleet is not active' });
+      }
 
-    if (!driver.boundedFleets.includes(fleet._id)) {
-      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
-    }
+      if (!driver.boundedFleets.includes(fleet._id)) {
+        return res.status(400).json({ error: 'Driver is not bound to this fleet' });
+      }
 
-    if (!driver.boundedFleets.includes(fleet._id)) {
-      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
-    }
-    
-    // If there are fleet locations, move all except the newest one to oldFleetLocations
-    if (fleetLocations.length > 1) {
-      const [newestLocation, ...oldLocations] = fleetLocations;
-      await Promise.all(oldLocations.map(async (location) => {
-        const oldFleetLocation = new OldFleetLocation(location.toObject());
-        await oldFleetLocation.save({ session });
-        await FleetLocation.findByIdAndDelete(location._id).session(session);
-      }));
-    }
+      if (!driver.boundedFleets.includes(fleet._id)) {
+        return res.status(400).json({ error: 'Driver is not bound to this fleet' });
+      }
+      
+      // If there are fleet locations, move all except the newest one to oldFleetLocations
+      if (fleetLocations.length > 1) {
+        const [newestLocation, ...oldLocations] = fleetLocations;
+        await Promise.all(oldLocations.map(async (location) => {
+          const oldFleetLocation = new OldFleetLocation(location.toObject());
+          await oldFleetLocation.save({ session });
+          await FleetLocation.findByIdAndDelete(location._id).session(session);
+        }));
+      }
 
-    // Deactivate the driver and the fleet
-    fleet.driverId = null;
-    driver.active = false;
-    fleet.active = false;
+      // Deactivate the driver and the fleet
+      fleet.driverId = null;
+      driver.active = false;
+      fleet.active = false;
 
-    await driver.save({ session });
-    await fleet.save({ session });
+      await driver.save({ session });
+      await fleet.save({ session });
 
-    await session.commitTransaction();
-
-    res.status(200).json({ message: 'Driving stopped successfully' });
+      res.status(200).json({ message: 'Driving stopped successfully' });
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     session.endSession();
@@ -309,88 +302,88 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  */
 router.post('/', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    if (!req.body.location || (!req.body.fleetId && !req.body.licencePlate)) {
-      return res.status(400).json({ error: 'Invalid fleet location data format' });
-    };
+    await session.withTransaction(async () => {
+      if (!req.body.location || (!req.body.fleetId && !req.body.licencePlate)) {
+        return res.status(400).json({ error: 'Invalid fleet location data format' });
+      };
 
-    let fleetId = req.body.fleetId;
-    let fleet;
+      let fleetId = req.body.fleetId;
+      let fleet;
 
-    if (!fleetId) {
-      fleet = await Fleet.findOne({ licencePlate: req.body.licencePlate });
-      if (!fleet) {
-        return res.status(404).json({ error: 'Fleet not found. Check the fleet ID or Licence Plate' });
+      if (!fleetId) {
+        fleet = await Fleet.findOne({ licencePlate: req.body.licencePlate });
+        if (!fleet) {
+          return res.status(404).json({ error: 'Fleet not found. Check the fleet ID or Licence Plate' });
+        }
+        fleetId = fleet._id;
+      } else {
+        fleet = await Fleet.findById(fleetId);
+      };
+
+      const { location } = req.body;
+      const driverId = req.user._id;
+
+      // Check if the driver is bound to the fleet
+      const driver = await User.findById(driverId);
+
+      if (!driver) {
+        return res.status(404).json({ error: 'Driver not found' });
       }
-      fleetId = fleet._id;
-    } else {
-      fleet = await Fleet.findById(fleetId);
-    };
+      if (!driver.boundedFleets.includes(fleetId)) {
+        return res.status(400).json({ error: 'Driver is not bound to this fleet' });
+      }
+      
+      // Check if the driver and the fleet are active
+      if (!driver.active) {
+        return res.status(400).json({ error: 'Driver is not active' });
+      }
+      if (!fleet.active) {
+        return res.status(400).json({ error: 'Fleet is not active' });
+      }
 
-    const { location } = req.body;
-    const driverId = req.user._id;
+      // Check if the driverId inside fleet is the same as the driver id
+      if (driverId.toString() !== fleet.driverId.toString()) {
+        return res.status(400).json({ error: 'Driver ID does not match the driver ID in the fleet' });
+      }
 
-    // Check if the driver is bound to the fleet
-    const driver = await User.findById(driverId);
+      const newFleetLocation = new FleetLocation({
+        _id: new mongoose.Types.ObjectId(),
+        fleetId,
+        driverId,
+        location,
+        timestamp: new Date().toISOString(),
+      });
+      
+      const result = await newFleetLocation.save({ session });
 
-    if (!driver) {
-      return res.status(404).json({ error: 'Driver not found' });
-    }
-    if (!driver.boundedFleets.includes(fleetId)) {
-      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
-    }
-    
-    // Check if the driver and the fleet are active
-    if (!driver.active) {
-      return res.status(400).json({ error: 'Driver is not active' });
-    }
-    if (!fleet.active) {
-      return res.status(400).json({ error: 'Fleet is not active' });
-    }
+      // Reset the timer for this driver & fleet
+      clearTimeout(activeTimers[driverId]);
+      activeTimers[driverId] = setTimeout(() => {
+        deactivateDriverAndFleet(driverId, fleetId);
+      }, 1800000); // 30 minutes
 
-    // Check if the driverId inside fleet is the same as the driver id
-    if (driverId.toString() !== fleet.driverId.toString()) {
-      return res.status(400).json({ error: 'Driver ID does not match the driver ID in the fleet' });
-    }
+      // Find the fourth newest location
+      const sixthNewestLocation = await FleetLocation
+      .findOne({ fleetId })
+      .sort('-timestamp')
+      .skip(5);
 
-    const newFleetLocation = new FleetLocation({
-      _id: new mongoose.Types.ObjectId(),
-      fleetId,
-      driverId,
-      location,
-      timestamp: new Date().toISOString(),
+      // If a sixth newest location exists, move it to the old locations collection
+      if (sixthNewestLocation) {
+        const oldFleetLocation = new OldFleetLocation(sixthNewestLocation.toObject());
+        await oldFleetLocation.save({ session });
+        await FleetLocation.findByIdAndRemove(sixthNewestLocation._id).session(session);
+      }
+
+      await session.commitTransaction();
+
+      res.status(201).json({
+        message: 'Fleet location created successfully',
+        createdFleetLocation: result,
+      });
     });
-    
-    const result = await newFleetLocation.save({ session });
-
-    // Reset the timer for this driver & fleet
-    clearTimeout(activeTimers[driverId]);
-    activeTimers[driverId] = setTimeout(() => {
-      deactivateDriverAndFleet(driverId, fleetId);
-    }, 1800000); // 30 minutes
-
-    // Find the fourth newest location
-    const sixthNewestLocation = await FleetLocation
-    .findOne({ fleetId })
-    .sort('-timestamp')
-    .skip(5);
-
-    // If a sixth newest location exists, move it to the old locations collection
-    if (sixthNewestLocation) {
-      const oldFleetLocation = new OldFleetLocation(sixthNewestLocation.toObject());
-      await oldFleetLocation.save({ session });
-      await FleetLocation.findByIdAndRemove(sixthNewestLocation._id).session(session);
-    }
-
-    await session.commitTransaction();
-
-    res.status(201).json({
-      message: 'Fleet location created successfully',
-      createdFleetLocation: result,
-    });
-
   } catch (err) {
     console.error(err);
     await session.abortTransaction();
@@ -838,24 +831,22 @@ router.get('/old/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'dr
  */
 router.patch('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const fleetLocationId = req.params.fleetLocationId;
-    const updateOps = req.body;
+    await session.withTransaction(async () => {
+      const fleetLocationId = req.params.fleetLocationId;
+      const updateOps = req.body;
 
-    const updatedFleetLocation = await FleetLocation.findByIdAndUpdate(fleetLocationId, { $set: updateOps }, { new: true, session }).exec();
+      const updatedFleetLocation = await FleetLocation.findByIdAndUpdate(fleetLocationId, { $set: updateOps }, { new: true, session }).exec();
 
-    if (!updatedFleetLocation) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Fleet location not found' });
-    }
+      if (!updatedFleetLocation) {
+        return res.status(404).json({ message: 'Fleet location not found' });
+      }
 
-    await session.commitTransaction();
-    res.status(200).json({ message: 'Fleet location updated successfully', updatedFleetLocation });
+      res.status(200).json({ message: 'Fleet location updated successfully', updatedFleetLocation });
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
@@ -953,24 +944,22 @@ router.patch('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), 
  */
 router.patch('/old/:oldFleetLocationId', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const id = req.params.oldFleetLocationId;
-    const updates = req.body;
+    await session.withTransaction(async () => {
+      const id = req.params.oldFleetLocationId;
+      const updates = req.body;
 
-    const oldFleetLocation = await OldFleetLocation.findByIdAndUpdate(id, updates, { new: true, session });
+      const oldFleetLocation = await OldFleetLocation.findByIdAndUpdate(id, updates, { new: true, session });
 
-    if (!oldFleetLocation) {
-      await session.abortTransaction();
-      res.status(404).json({ message: 'No old fleet location found with this ID.' });
-    } else {
-      await session.commitTransaction();
-      res.status(200).json(oldFleetLocation);
-    }
+      if (!oldFleetLocation) {
+        res.status(404).json({ message: 'No old fleet location found with this ID.' });
+      } else {
+        res.status(200).json(oldFleetLocation);
+      }
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
@@ -1013,22 +1002,20 @@ router.patch('/old/:oldFleetLocationId', authenticateTokenAndAuthorization(['adm
  */
 router.delete('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const fleetLocationId = req.params.fleetLocationId;
-    const result = await FleetLocation.findByIdAndRemove(fleetLocationId).session(session).exec();
+    await session.withTransaction(async () => {
+      const fleetLocationId = req.params.fleetLocationId;
+      const result = await FleetLocation.findByIdAndRemove(fleetLocationId).session(session).exec();
 
-    if (!result) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Fleet location not found' });
-    }
+      if (!result) {
+        return res.status(404).json({ message: 'Fleet location not found' });
+      }
 
-    await session.commitTransaction();
-    res.status(200).json({ message: 'Fleet location deleted successfully' });
+      res.status(200).json({ message: 'Fleet location deleted successfully' });
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
@@ -1074,22 +1061,20 @@ router.delete('/:fleetLocationId', authenticateTokenAndAuthorization(['admin']),
  */
 router.delete('/oldFleetLocation', authenticateTokenAndAuthorization(['admin']), async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const oldFleetLocation = req.body.oldFleetLocation;
-    const result = await FleetLocation.findOneAndDelete({ fleetLocation: oldFleetLocation }).session(session).exec();
+    await session.withTransaction(async () => {
+      const oldFleetLocation = req.body.oldFleetLocation;
+      const result = await FleetLocation.findOneAndDelete({ fleetLocation: oldFleetLocation }).session(session).exec();
 
-    if (!result) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Old Fleet location not found' });
-    }
+      if (!result) {
+        return res.status(404).json({ message: 'Old Fleet location not found' });
+      }
 
-    await session.commitTransaction();
-    res.status(200).json({ message: 'Old Fleet location deleted successfully' });
+      res.status(200).json({ message: 'Old Fleet location deleted successfully' });
+    });
   } catch (err) {
     console.error(err);
-    await session.abortTransaction();
     res.status(500).json({
       message: "Internal server error",
       error: err,
@@ -1098,6 +1083,5 @@ router.delete('/oldFleetLocation', authenticateTokenAndAuthorization(['admin']),
     session.endSession();
   }
 });
-
 
 module.exports = router;
