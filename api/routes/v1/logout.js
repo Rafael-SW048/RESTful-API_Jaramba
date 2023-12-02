@@ -37,9 +37,9 @@ const RevokedToken = require('../../models/revokedTokens');
  *         description: There was a problem with the request body
  */
 const mongoose = require('mongoose');
-const session = mongoose.startSession();
 
 router.post('/logout', async (req, res) => {
+  console.log('Received a POST request at /logout');
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
@@ -47,21 +47,18 @@ router.post('/logout', async (req, res) => {
   }
 
   try {
-    await session.withTransaction(async () => {
-      // Add the token to the revoked tokens list
-      const revokedToken = new RevokedToken({ token: refreshToken });
-      await revokedToken.save();
-    });
+    // Add the token to the revoked tokens list
+    const revokedToken = new RevokedToken({ token: refreshToken });
+    await revokedToken.save();
 
     res.status(200).json({ 
       message: 'Logged out successfully',
     });
-  } catch (error) {
-    console.error('Error occurred during transaction:', error);
-    res.status(500).json({ message: 'An error occurred during logout' });
-  } finally {
-    session.endSession();
-  }
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'An error occurred during logout', 
+      error: err, });
+  } 
 });
 
 module.exports = router;

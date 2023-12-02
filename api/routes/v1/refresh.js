@@ -44,30 +44,37 @@ const User = require('../../models/users');
  *         description: Invalid refresh token
  */
 router.post('/refresh', async (req, res) => {
-  const { refreshToken } = req.body;
+  try {
+    console.log('Received a POST request at /refresh');
+    const { refreshToken } = req.body;
 
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'Refresh token is missing' });
-  }
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'Refresh token is missing' });
+    }
 
-  const user = await User.findOne({ refreshToken: refreshToken });
+    const user = await User.findOne({ refreshToken: refreshToken }).exec();
 
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid refresh token' });
-  }
-
-  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, payload) => {
-    if (err) {
+    if (!user) {
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
 
-    const accessToken = jwt.sign({ userId: payload.userId }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, payload) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
+      }
 
-    res.status(200).json({ 
-      message: 'Access token refreshed successfully',
-      accessToken: accessToken,
+      const accessToken = jwt.sign({ userId: payload.userId }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+      res.status(200).json({ 
+        message: 'Access token refreshed successfully',
+        accessToken: accessToken,
+      });
     });
-  });
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Internal server error', 
+      error: err });
+  }
 });
 
 module.exports = router;

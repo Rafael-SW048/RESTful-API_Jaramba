@@ -57,46 +57,42 @@ const mongoose = require('mongoose');
  *         description: There was an error on the server
  */
 router.post('/', async (req, res) => {
-  const session = await mongoose.startSession();
-
+  console.log('Received a POST request at /login');
   try {
-    await session.withTransaction(async () => {
-      const { usernameOrEmail, password } = req.body;
+    const { usernameOrEmail, password } = req.body;
 
-      // Input validation
-      if (!usernameOrEmail || !password) {
-        return res.status(400).json({ message: 'Username or password is missing' });
-      }
+    // Input validation
+    if (!usernameOrEmail || !password) {
+      return res.status(400).json({ message: 'Username or password is missing' });
+    }
 
-      // Find the user by username or email
-      const user = await User.findOne({
-        $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }]
-      }).session(session);
+    // Find the user by username or email
+    const user = await User.findOne({
+      $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }]
+    }).exec;
 
-      // If the user is not found or the password is incorrect, send a 401 response
-      if (!user || !await bcrypt.compare(password, user.password)) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
+    // If the user is not found or the password is incorrect, send a 401 response
+    if (!user || !await bcrypt.compare(password, user.password)) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
 
-      // If the username and password are correct, create a token and send a 200 response
-      const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-      const refreshToken = jwt.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '14d' });
+    // If the username and password are correct, create a token and send a 200 response
+    const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '14d' });
 
-      // Store the refresh token in the database
-      user.refreshToken = refreshToken;
-      await user.save({ session });
+    // Store the refresh token in the database
+    user.refreshToken = refreshToken;
+    await user.save();
 
-      res.status(200).json({ 
-        message: 'Logged in successfully',
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      });
+    res.status(200).json({ 
+      message: 'Logged in successfully',
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
-  } finally {
-    session.endSession();
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: err });
   }
 });
 

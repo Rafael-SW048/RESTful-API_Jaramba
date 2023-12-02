@@ -27,11 +27,8 @@ async function registerData() {
     return process.exit();;
   }
 
-  // Start a session for the transaction
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
+    console.log('Registering data...');
     // Register the SUPER admin users
     const superadmin = new User({
       _id: new mongoose.Types.ObjectId(),
@@ -158,17 +155,8 @@ async function registerData() {
     await fleet1.save();
     await fleet2.save();
   } catch (error) {
-    
-    // If an error occurred, abort the transaction
-    await session.abortTransaction();
     console.error('An error occurred:', error);
-  } finally {
-    // End the session
-    session.endSession();
-  }
-  // Close the database connection
-  await mongoose.connection.close();
-
+  };
   // Exit the process
   process.exit();
 }
