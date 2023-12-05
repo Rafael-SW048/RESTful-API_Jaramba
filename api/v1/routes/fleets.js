@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-const Fleet = require('../../models/fleets');
+const Fleet = require('../models/fleets');
 const fleetSchema = Fleet.schema;
 const DeletedFleet = mongoose.model('DeletedFleet', fleetSchema);
 

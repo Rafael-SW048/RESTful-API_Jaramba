@@ -9,7 +9,7 @@ const helmet = require('helmet');
 const setupSwagger = require('./swaggerSetup'); // Import the swaggerSetup module
 
 // Import routes
-const v1Routes = require('../api/routes/v1/');
+const v1Routes = require('../api/v1/routes/');
 
 // MongoDB URI loaded from the environment variable
 const mongooseURI = process.env.MONGODB_URI;

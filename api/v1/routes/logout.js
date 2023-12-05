@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const RevokedToken = require('../../models/revokedTokens');
+const RevokedToken = require('../models/revokedTokens');
 
 /**
  * @swagger

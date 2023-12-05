@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 
-const User = require('../../models/users');
+const User = require('../models/users');
 const userSchema = User.schema;
 const DeletedUser = mongoose.model('DeletedUser', userSchema);
 

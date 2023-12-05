@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-const FleetLocation = require('../../models/fleetLocations');
-const Fleet = require('../../models/fleets');
-const User = require('../../models/users');
+const FleetLocation = require('../models/fleetLocations');
+const Fleet = require('../models/fleets');
+const User = require('../models/users');
 const fleetSchema = FleetLocation.schema;
 const OldFleetLocation = mongoose.model('oldFleetLocation', fleetSchema);
 

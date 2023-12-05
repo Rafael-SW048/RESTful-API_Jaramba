@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const expressJwt = require('express-jwt');
-const User = require('../../models/users');
+const User = require('../models/users');
 
 
 function authenticateTokenAndAuthorization(roles) {

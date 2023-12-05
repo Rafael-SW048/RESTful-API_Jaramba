@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
-const User = require('../../models/users'); // adjust the path as needed
+const User = require('../models/users'); // adjust the path as needed
 const mongoose = require('mongoose');
 
 /**
@@ -69,8 +69,9 @@ router.post('/', async (req, res) => {
     // Find the user by username or email
     const user = await User.findOne({
       $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }]
-    }).exec;
+    }).exec();
 
+    console.log('Received a POST request at /login/try1');
     // If the user is not found or the password is incorrect, send a 401 response
     if (!user || !await bcrypt.compare(password, user.password)) {
       return res.status(401).json({ message: 'Invalid username or password' });
