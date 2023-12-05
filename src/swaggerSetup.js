@@ -22,7 +22,7 @@ const options = {
       BearerAuth: []
     }]
   },
-  apis: ['./api/routes/v1/*.js'], // files containing annotations as above
+  apis: ['./api/v1/routes/*.js'], // files containing annotations as above
 };
 
 // Initialize swagger-jsdoc -> returns validated swagger spec in json format
