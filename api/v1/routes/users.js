@@ -333,7 +333,12 @@ router.patch('/:userId',
     }
 
     try {
-      const userId = req.params.userId;
+      const userId;
+      if (req.user.roles.includes('admin')) {
+        userId = req.params.userId;
+      } else {
+        userId = req.user._id;
+      };
       const updateOps = req.body;
 
       // Restricting the fields that can be updated

@@ -15,7 +15,17 @@ function authenticateTokenAndAuthorization(roles) {
 
       jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
         if (err) {
-          return res.status(403).json({ message: 'Failed to authenticate token', error: err});
+          console.error('JWT Verification Error:', err);
+
+          if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token has expired' });
+          }
+
+          if (err.name === 'JsonWebTokenError') {
+            return res.status(403).json({ error: 'Failed to authenticate token' });
+          }
+
+          return res.status(500).json({ error: 'Internal server error' });
         }
 
         // Check if the user exists in the database
