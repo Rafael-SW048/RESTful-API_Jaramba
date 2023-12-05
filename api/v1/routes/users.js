@@ -333,7 +333,7 @@ router.patch('/:userId',
     }
 
     try {
-      const userId = "";
+      let userId = "";
       if (req.user.roles.includes('admin')) {
         userId = req.params.userId;
       } else {
@@ -349,10 +349,12 @@ router.patch('/:userId',
         return res.status(403).json({ message: 'You are not allowed to update the following fields:', restrictedFields });
       }
 
+      let passwordUpdated = false
       if (updateOps.password) {
         // Encrypt the password using bcrypt
         const hashedPassword = await bcrypt.hash(updateOps.password, 10);
         updateOps.password = hashedPassword;
+        passwordUpdated = true;
       }
 
       const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateOps }, { new: true }).exec();
@@ -376,12 +378,15 @@ router.patch('/:userId',
 
       const response = { message: 'User updated successfully', user: responseUser };
       if (passwordUpdated) {
-        response.user.updatedField[passwordMessage] = 'Password updated successfully';
+        response.user.updatedField.passwordMessage = 'Password updated successfully';
       }
 
       res.status(200).json(response);
     } catch (err) {
-      res.status(500).json({ error: err });
+      res.status(500).json({ 
+        message: "Internal Server Error", 
+        error: err 
+      });
     }
 });
 
