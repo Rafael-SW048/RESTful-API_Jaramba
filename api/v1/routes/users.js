@@ -333,7 +333,7 @@ router.patch('/:userId',
     }
 
     try {
-      const userId;
+      const userId = "";
       if (req.user.roles.includes('admin')) {
         userId = req.params.userId;
       } else {
