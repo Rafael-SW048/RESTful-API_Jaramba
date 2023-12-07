@@ -1,9 +1,9 @@
 require('dotenv').config(); // Load environment variables from .env file
 
 const mongoose = require('mongoose');
-const User = require('../api/models/users');
-const Fleet = require('../api/models/fleets');
-const FleetLocation = require('./models/fleetLocations');
+const User = require('../api/v1/models/users');
+const Fleet = require('../api/v1/models/fleets');
+const FleetLocation = require('../api/v1/models/fleetLocations');
 const bcrypt = require('bcrypt');
 
 async function registerData() {
@@ -188,10 +188,11 @@ async function registerData() {
       // Save the fleet locations to the database
       await fleetLocation1.save();
       await fleetLocation2.save();
+    }
   } catch (error) {
-    console.error('An error occurred:', error);
+    console.error(error);
   };
-  // Exit the process
+  // Exit the processs
   process.exit();
 }
 
