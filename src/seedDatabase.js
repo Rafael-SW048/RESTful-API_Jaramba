@@ -3,6 +3,7 @@ require('dotenv').config(); // Load environment variables from .env file
 const mongoose = require('mongoose');
 const User = require('../api/models/users');
 const Fleet = require('../api/models/fleets');
+const FleetLocation = require('./models/fleetLocations');
 const bcrypt = require('bcrypt');
 
 async function registerData() {
@@ -154,6 +155,33 @@ async function registerData() {
     // Save the fleets to the database
     await fleet1.save();
     await fleet2.save();
+
+    // Create dummy fleet locations
+  const fleetLocation1 = new FleetLocation({
+    _id: new mongoose.Types.ObjectId(),
+    fleetId: fleet1._id,
+    driverId: driver1._id,
+    location: {
+      lat: '40.712776',
+      lon: '-74.005974',
+    },
+    timestamp: new Date().toISOString(),
+  });
+
+  const fleetLocation2 = new FleetLocation({
+    _id: new mongoose.Types.ObjectId(),
+    fleetId: fleet2._id,
+    driverId: driver2._id,
+    location: {
+      lat: '34.052235',
+      lon: '-118.243683',
+    },
+    timestamp: new Date().toISOString(),
+  });
+
+  // Save the fleet locations to the database
+  await fleetLocation1.save();
+  await fleetLocation2.save();
   } catch (error) {
     console.error('An error occurred:', error);
   };
