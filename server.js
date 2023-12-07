@@ -1,37 +1,43 @@
+require('dotenv').config();
+
+const express = require('express');
 const http = require('http');
 const https = require('https');
+
 const fs = require('fs');
 const app = require('./src/app');
-const express = require('express');
-const helmet = require('helmet');
-
-// Apply security headers using the helmet middleware
-app.use(helmet());
-
 const httpPort = process.env.HTTP_PORT || 3000;
 const httpsPort = process.env.HTTPS_PORT || 3001;
-
-// Read the SSL certificate files
-const privateKey = fs.readFileSync('./mySSL/privatekey.pem', 'utf8');
-const certificate = fs.readFileSync('./mySSL/certificate.pem', 'utf8');
-
-const credentials = { key: privateKey, cert: certificate };
+const redirectHttpToHttps = process.env.REDIRECT_HTTP_TO_HTTPS === 'true';
 
 // Create an HTTP server
 const httpApp = express();
-httpApp.all('*', (req, res) => res.redirect(`https://${req.hostname}:${httpsPort}${req.url}`));
-const httpServer = http.createServer(httpApp);
 
+const httpServer = http.createServer(httpApp);
 httpServer.listen(httpPort, "0.0.0.0", () => {
   console.log(`HTTP Server is running on port ${httpPort}`);
 });
 
 // Create an HTTPS server
-const httpsServer = https.createServer(credentials, app);
+let httpsServer;
+try {
+  const privateKey = fs.readFileSync('./mySSL/privatekey.pem', 'utf8');
+  const certificate = fs.readFileSync('./mySSL/certificate.pem', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
 
-httpsServer.listen(httpsPort, "0.0.0.0", () => {
-  console.log(`HTTPS Server is running on port ${httpsPort}`);
-});
+  httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(httpsPort, "0.0.0.0", () => {
+    console.log(`HTTPS Server is running on port ${httpsPort}`);
+  });
+  if (redirectHttpToHttps) {
+    httpApp.all('*', (req, res) => res.redirect(`https://${req.hostname}:${httpsPort}${req.url}`));
+    console.log(`Redirecting all HTTP traffic to HTTPS on port ${httpsPort}`);
+  } else {
+    console.log('Not redirecting HTTP to HTTPS as REDIRECT_HTTP_TO_HTTPS is false.');
+  };
+} catch (error) {
+  console.log('Could not find SSL certificates, HTTPS server will not be created.');
+}
 
 // Graceful shutdown
 process.on('SIGINT', () => {
@@ -39,8 +45,9 @@ process.on('SIGINT', () => {
   httpServer.close(() => {
     console.log('HTTP Server closed.');
   });
-  httpsServer.close(() => {
-    console.log('HTTPS Server closed.');
-  });
-  process.exit(0);
+  if (httpsServer) {
+    httpsServer.close(() => {
+      console.log('HTTPS Server closed.');
+    });
+  }
 });

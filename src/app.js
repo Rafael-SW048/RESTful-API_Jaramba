@@ -1,12 +1,12 @@
 require('dotenv').config(); // Load environment variables from .env file
 
 const express = require('express');
-const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const setupSwagger = require('./swaggerSetup'); // Import the swaggerSetup module
+const app = express();
 
 // Import routes
 const v1Routes = require('../api/v1/routes/');
