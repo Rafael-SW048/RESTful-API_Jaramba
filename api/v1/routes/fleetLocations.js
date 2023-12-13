@@ -185,7 +185,7 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
       await Promise.all(oldLocations.map(async (location) => {
         const oldFleetLocation = new OldFleetLocation(location.toObject());
         await oldFleetLocation.save();
-        await FleetLocation.findByIdAndDelete(location._id).exec();
+        await FleetLocation.findByIdAndDelete(location._id);
       }));
     }
 
@@ -217,6 +217,14 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  *           schema:
  *             type: object
  *             properties:
+ *               fleetId:
+ *                 type: string
+ *                 description: The id of the fleet
+ *                 example: '5f9d1b3b9d3f2b2b3c9d1f9d'
+ *               driverId:
+ *                 type: string
+ *                 description: The id of the driver
+ *                 example: '5f9d1b3b9d3f2b2b3c9d1f9d'
  *               location:
  *                 type: object
  *                 description: The location of the fleet
@@ -229,21 +237,9 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  *                     type: string
  *                     description: The longitude of the location
  *                     example: '106.123456'
- *               driverId:
- *                 type: string
- *                 description: The id of the driver
- *                 example: '5f9d1b3b9d3f2b2b3c9d1f9d'
- *               fleetId:
- *                 type: string
- *                 description: The id of the fleet
- *                 example: '5f9d1b3b9d3f2b2b3c9d1f9d'
- *               licencePlate:
- *                 type: string
- *                 description: The license plate of the fleet
- *                 example: 'B 1234 CD'
  *     responses:
  *       201:
- *         description: Fleet location created successfully
+ *         description: Fleet location record created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -251,7 +247,8 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  *               properties:
  *                 message:
  *                   type: string
- *                   description: A message indicating the fleet location was created
+ *                   description: A message indicating the fleet location record creation
+ *                   example: 'Fleet location record created successfully'
  *                 createdFleetLocation:
  *                   type: object
  *                   properties:
@@ -271,19 +268,23 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
  *                       type: object
  *                       description: The location of the fleet
  *                       properties:
- *                        lat:
- *                          type: string
- *                          description: The latitude of the location
- *                          example: '-6.123456'
- *                     timestamp:
- *                       type: string
- *                       format: date-time
- *                       description: The timestamp of the fleet location
- *                       example: '2020-10-30T07:00:00.000Z'
+ *                         lat:
+ *                           type: string
+ *                           description: The latitude of the location
+ *                           example: '-6.123456'
+ *                         lon:
+ *                           type: string
+ *                           description: The longitude of the location
+ *                           example: '106.123456'
+ *                         timestamp:
+ *                           type: string
+ *                           format: date-time
+ *                           description: The timestamp of the fleet location
+ *                           example: '2020-10-30T07:00:00.000Z'
  *       400:
  *         description: Invalid fleet location data format or driver is not active or fleet is not active or driver ID does not match the driver ID in the fleet or driver is not bound to this fleet
  *       404:
- *         description: Fleet not found or driver not found
+ *         description: Fleet not found or driver is not bound to this fleet
  *       500:
  *         description: There was an error on the server
  */

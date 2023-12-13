@@ -10,10 +10,7 @@ const httpPort = process.env.HTTP_PORT || 3000;
 const httpsPort = process.env.HTTPS_PORT || 3001;
 const redirectHttpToHttps = process.env.REDIRECT_HTTP_TO_HTTPS === 'true';
 
-// Create an HTTP server
-const httpApp = express();
-
-const httpServer = http.createServer(httpApp);
+const httpServer = http.createServer(app);
 httpServer.listen(httpPort, "0.0.0.0", () => {
   console.log(`HTTP Server is running on port ${httpPort}`);
 });
