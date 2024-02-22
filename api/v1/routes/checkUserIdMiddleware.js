@@ -16,7 +16,7 @@ function checkUserIdMiddleware() {
       }
     } catch (err) {
       res.status(500).json({ 
-        message: 'Internal Server Error', 
+        message: 'Internal Server Error: An error occurred while checking the user ID. Please try again.', 
         error: err });
     }
   }
