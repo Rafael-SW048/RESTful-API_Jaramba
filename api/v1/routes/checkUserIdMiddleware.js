@@ -5,7 +5,18 @@ function checkUserIdMiddleware() {
       let userId = req.params.userId; // Assuming the user ID is passed as a route parameter
 
       if (!userId) {
-        userId = req.userInfo._id; // If the user ID is not passed as a route parameter, use the user ID from the JWT payload
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (!token) {
+          return res.status(401).json({ error: 'No token provided' });
+        }
+
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+          if (err) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid token' });
+          }
+          userId = decoded.userId;
+        });
       }
 
       // Check if the user ID is authorized to change the data
@@ -16,10 +27,8 @@ function checkUserIdMiddleware() {
       }
     } catch (err) {
       res.status(500).json({ 
-        message: 'Internal Server Error: An error occurred while checking the user ID. Please try again.', 
-        error: err,
-        userId: req.userInfo
-       });
+        message: 'Internal Server Error', 
+        error: err });
     }
   }
 }
