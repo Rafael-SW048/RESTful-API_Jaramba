@@ -43,7 +43,7 @@ const User = require('../models/users');
  *       401:
  *         description: Invalid refresh token
  */
-router.post('/refresh', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     console.log('Received a POST request at /refresh');
     const { refreshToken } = req.body;

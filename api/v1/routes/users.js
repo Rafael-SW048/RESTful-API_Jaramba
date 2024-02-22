@@ -87,7 +87,7 @@ function formatUserData(user) {
  *       500:
  *         description: There was an error on the server
  */
-router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
+router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), checkUserIdMiddleware(), async (req, res) => {
   try {
     console.log('Received a GET request at /users');
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);
@@ -174,7 +174,7 @@ router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req,
  *       500:
  *         description: There was an error on the server
  */
-router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
+router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), checkUserIdMiddleware(), async (req, res) => {
   try {
     console.log('Received a GET request at /users/search');
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);

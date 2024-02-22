@@ -38,7 +38,7 @@ const RevokedToken = require('../models/revokedTokens');
  */
 const mongoose = require('mongoose');
 
-router.post('/logout', async (req, res) => {
+router.post('/', async (req, res) => {
   console.log('Received a POST request at /logout');
   const { refreshToken } = req.body;
 
