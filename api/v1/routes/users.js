@@ -87,7 +87,7 @@ function formatUserData(user) {
  *       500:
  *         description: There was an error on the server
  */
-router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver']), checkUserIdMiddleware(), async (req, res) => {
+router.get('/', authenticateTokenAndAuthorization(['admin', 'hcm']), async (req, res) => {
   try {
     console.log('Received a GET request at /users');
     const limit = Math.min(parseInt(req.query.limit) || 5, 10);
@@ -183,18 +183,22 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver
 
     let query = {};
 
-    for (const param in req.query) {
-      if (req.query[param]) {
-        query[param] = req.query[param];
+    if (req.userInfo.roles.includes('driver')) {
+      query._id = req.userInfo._id;
+    } else {
+      for (const param in req.query) {
+        if (req.query[param]) {
+          query[param] = req.query[param];
+        }
       }
-    }
 
-    // Exclude users with 'admin' role
-    query.roles = { $ne: 'admin' };
+      // Exclude users with 'admin' role
+      query.roles = { $ne: 'admin' };
 
-    // If the requester's role is 'hcm', only return users with 'driver' role
-    if (req.user.roles.includes('hcm')) {
-      query.roles = 'driver';
+      // If the requester's role is 'hcm', only return users with 'driver' role
+      if (req.user.roles.includes('hcm')) {
+        query.roles = 'driver';
+      }
     }
 
     const totalUsers = await User.countDocuments(query);
@@ -213,10 +217,10 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver
         currentPage: page
       });
     }
-  } catch (err) {
-    res.status(500).json({ error: err });
-  }
-});
+    } catch (err) {
+      res.status(500).json({ error: err });
+    }
+    });
 
 /**
  * @swagger
