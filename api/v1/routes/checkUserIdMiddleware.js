@@ -5,7 +5,7 @@ function checkUserIdMiddleware() {
       let userId = req.params.userId; // Assuming the user ID is passed as a route parameter
 
       if (!userId) {
-        userId = req.user
+        userId = req.user,_id
       }
 
       // Check if the user ID is authorized to change the data
