@@ -184,7 +184,7 @@ router.get('/search', authenticateTokenAndAuthorization(['admin', 'hcm', 'driver
     let query = {};
 
     if (req.userInfo.roles.includes('driver')) {
-      query._id = req.userInfo._id;
+      query._id = req.user._id;
     } else {
       for (const param in req.query) {
         if (req.query[param]) {
