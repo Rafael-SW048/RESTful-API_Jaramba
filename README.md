@@ -13,7 +13,7 @@ Before running the project, make sure you have the following installed:
 3. `sudo apt-get install docker-compose`
 
 ## Setup
-1. Clone the repository: `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git`
+1. Clone the repository: `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git` or `git pull origin main` for updates
 2. Navigate to the project directory: `cd RESTful-API_Jaramba`
 3. Install dependencies: `npm install`
 
