@@ -13,4 +13,4 @@ RUN if [ -f .env ]; then export $(cat .env | xargs) && if [ ! -z "$PORT" ]; then
 
 EXPOSE $PORT
 
-CMD [ "npm", "start"]
+# CMD [ "npm", "start"]

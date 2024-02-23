@@ -37,7 +37,7 @@ package-lock.json
 
 # Docker #
 ######################
-Dockerfile
+# Dockerfile
 .dockerignore
 docker-compose.yml
 
