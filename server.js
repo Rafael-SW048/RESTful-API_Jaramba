@@ -41,10 +41,13 @@ process.on('SIGINT', () => {
   console.log('Shutting down gracefully...');
   httpServer.close(() => {
     console.log('HTTP Server closed.');
+    process.exit();
   });
+  
   if (httpsServer) {
     httpsServer.close(() => {
       console.log('HTTPS Server closed.');
+      process.exit();
     });
   }
 });

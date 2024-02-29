@@ -9,22 +9,23 @@ Before running the project, make sure you have the following installed:
 
 ## Installation
 1. `sudo apt-get update`
-2. `sudo apt-get install docker-ce docker-ce-cli containerd.io`
-3. `sudo apt-get install docker-compose`
+2. `sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose`
+   `sudo chmod +x /usr/local/bin/docker-compose`
+   `sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose`
 
 ## Setup
 1. Clone the repository: `git clone https://github.com/Rafael-SW048/RESTful-API_Jaramba.git` or `git pull origin main` for updates
 2. Navigate to the project directory: `cd RESTful-API_Jaramba`
 3. Install dependencies: `npm install`
 
-## Seeding the Database
-To seed the database with initial data for testing, run the `seedDatabase.js` script:
-1. `node seedDatabase.js`
-
 ## Running the Project
 To run the project, follow these steps:
 1. Start the MongoDB server and dashboard containers: `docker-compose up -d`
 2. Start the project: `npm start`
+
+## Seeding the Database
+To seed the database with initial data for testing, run the `seedDatabase.js` script:
+1. `node seedDatabase.js`
 
 ## Running in the Background
 If you want to run the project in the background, you can use PM2:
