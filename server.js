@@ -27,9 +27,15 @@ try {
     console.log(`HTTPS Server is running on port ${httpsPort}`);
   });
   if (redirectHttpToHttps) {
-    httpApp.all('*', (req, res) => res.redirect(`https://${req.hostname}:${httpsPort}${req.url}`));
+    app.all('*', (req, res, next) => {
+        if (req.secure) {
+            next();
+        } else {
+            res.redirect(`https://${req.hostname}:${httpsPort}${req.url}`);
+        }
+    });
     console.log(`Redirecting all HTTP traffic to HTTPS on port ${httpsPort}`);
-  } else {
+} else {
     console.log('Not redirecting HTTP to HTTPS as REDIRECT_HTTP_TO_HTTPS is false.');
   };
 } catch (error) {
