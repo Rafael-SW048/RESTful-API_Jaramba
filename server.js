@@ -34,6 +34,7 @@ try {
   };
 } catch (error) {
   console.log('Could not find SSL certificates, HTTPS server will not be created.');
+  console.log(error);
 }
 
 // Graceful shutdown
