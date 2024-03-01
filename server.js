@@ -20,7 +20,7 @@ let httpsServer;
 try {
   const privateKey = fs.readFileSync('./mySSL/privatekey.pem', 'utf8');
   const certificate = fs.readFileSync('./mySSL/certificate.pem', 'utf8');
-  const credentials = { key: privateKey, cert: certificate };
+  const credentials = { key: privateKey, cert: certificate, passphrase: process.env.SSL_PASSPHRASE};
 
   httpsServer = https.createServer(credentials, app);
   httpsServer.listen(httpsPort, "0.0.0.0", () => {
