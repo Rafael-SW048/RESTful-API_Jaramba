@@ -13,7 +13,7 @@ const checkUserIdMiddleware = require('./checkUserIdMiddleware');
 
 async function deactivateDriverAndFleet(driverId, fleetId) {
   try {
-    console.log('Deactivating driver and fleet');
+    console.log('Deactivating driver and fleet: ' driverId, fleetId);
     const driver = await User.findById(driverId).exec();
     const fleet = await Fleet.findById(fleetId).exec();
 
@@ -154,7 +154,7 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
 router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, res) => {
   try {
     console.log('Received a POST request at /stop');
-    const driverId = req.user.id;
+    const driverId = req.user._id;
     const { fleetId } = req.body;
 
     // Find the driver and the fleet
@@ -201,7 +201,9 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
   } catch (err) {
     res.status(500).json({ 
       message: 'Internal server error',
-      error: err });
+      error: err,
+      'error location': 'fleetLocation.js/stop'
+    });
   };
 });
 

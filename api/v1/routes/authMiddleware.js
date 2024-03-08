@@ -58,7 +58,8 @@ function authenticateTokenAndAuthorization(roles) {
     } catch (err) {
       return res.status(500).json({ 
         message: 'Internal server error',
-        error: err });
+        error: err,
+        'error location': 'authMiddleware.authenticateTokenAndAuthorization.js' });
     }
   };
 }
