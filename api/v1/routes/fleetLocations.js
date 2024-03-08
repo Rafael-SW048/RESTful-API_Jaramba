@@ -181,6 +181,8 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
     console.log("here1")
     
     // If there are fleet locations, move all except the newest one to oldFleetLocations
+    const fleetLocations = await FleetLocation.find({ fleetId }).exec();
+
     if (fleetLocations.length > 1) {
       console.log("here2")
       const [newestLocation, ...oldLocations] = fleetLocations;
