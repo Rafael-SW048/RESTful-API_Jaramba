@@ -178,13 +178,11 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
     if (!driver.boundedFleets.includes(fleet._id)) {
       return res.status(400).json({ error: 'Driver is not bound to this fleet' });
     }
-    console.log("here1")
     
     // If there are fleet locations, move all except the newest one to oldFleetLocations
     const fleetLocations = await FleetLocation.find({ fleetId }).exec();
 
     if (fleetLocations.length > 1) {
-      console.log("here2")
       const [newestLocation, ...oldLocations] = fleetLocations;
       await Promise.all(oldLocations.map(async (location) => {
         const oldFleetLocation = new OldFleetLocation(location.toObject());
@@ -192,17 +190,14 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
         await FleetLocation.findByIdAndDelete(location._id);
       }));
     }
-    console.log("here3")
 
     // Deactivate the driver and the fleet
     fleet.driverId = null;
     driver.active = false;
     fleet.active = false;
-    console.log("here4")
 
     await driver.save();
     await fleet.save();
-    console.log("here5")
 
     res.status(200).json({ message: 'Driving stopped successfully' });
   } catch (err) {
