@@ -13,7 +13,7 @@ const checkUserIdMiddleware = require('./checkUserIdMiddleware');
 
 async function deactivateDriverAndFleet(driverId, fleetId) {
   try {
-    console.log('Deactivating driver and fleet: ' driverId, fleetId);
+    console.log('Deactivating driver and fleet: ', driverId, fleetId);
     const driver = await User.findById(driverId).exec();
     const fleet = await Fleet.findById(fleetId).exec();
 
