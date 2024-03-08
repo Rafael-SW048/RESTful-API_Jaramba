@@ -80,8 +80,8 @@ router.post('/drive', authenticateTokenAndAuthorization(['driver']), async (req,
 
     // Check if the fleet exist
     if (!fleet) {
-      if (driver.boundedFleets.includes(fleet._id)) {
-        const index = driver.boundedFleets.indexOf(fleet._id);
+      if (driver.boundedFleets.includes(fleetId)) {
+        const index = driver.boundedFleets.indexOf(fleetId);
         driver.boundedFleets.splice(index, 1);
         await driver.save();
       }
