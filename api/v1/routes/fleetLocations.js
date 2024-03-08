@@ -157,9 +157,13 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
     const driverId = req.user._id;
     const { fleetId } = req.body;
 
+    console.log(driverId, fleetId);
+
     // Find the driver and the fleet
     const driver = await User.findById(driverId).exec();
     const fleet = await Fleet.findById(fleetId).exec();
+
+    console.log(driver, fleet);
 
     // Check if the fleet exist
     if (!fleet) {
@@ -169,10 +173,6 @@ router.post('/stop', authenticateTokenAndAuthorization(['driver']), async (req, 
     // Check if the fleet is not active
     if (!fleet.active) {
       return res.status(400).json({ error: 'Fleet is not active' });
-    }
-
-    if (!driver.boundedFleets.includes(fleet._id)) {
-      return res.status(400).json({ error: 'Driver is not bound to this fleet' });
     }
 
     if (!driver.boundedFleets.includes(fleet._id)) {
